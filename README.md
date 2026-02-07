@@ -10,6 +10,10 @@ Your journal. Your memories. Your keys. Immutable. Verifiable. Forever.
 [![PyPI](https://img.shields.io/pypi/v/diaryvault-memory.svg)](https://pypi.org/project/diaryvault-memory/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
+<p align="center">
+  <img src="demo.svg" alt="DiaryVault Memory Layer Demo" width="700">
+</p>
+
 ---
 
 ## The Problem
