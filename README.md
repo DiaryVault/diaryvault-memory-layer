@@ -5,7 +5,9 @@
 Your journal. Your memories. Your keys. Immutable. Verifiable. Forever.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/DiaryVault/diaryvault-memory-layer/actions/workflows/ci.yml/badge.svg)](https://github.com/DiaryVault/diaryvault-memory-layer/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
+[![PyPI](https://img.shields.io/pypi/v/diaryvault-memory.svg)](https://pypi.org/project/diaryvault-memory/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ---

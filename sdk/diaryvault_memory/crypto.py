@@ -37,12 +37,26 @@ class MemoryCrypto:
                           your memories are unrecoverable.
         """
         self._master_key = encryption_key.encode("utf-8")
-        self._enc_key = self._derive_key(b"encryption")
-        self._sign_key = self._derive_key(b"signing")
+        self._enc_key = self._derive_key(b"diaryvault-encryption")
+        self._sign_key = self._derive_key(b"diaryvault-signing")
 
     def _derive_key(self, purpose: bytes) -> bytes:
-        """Derive a purpose-specific key from the master key using HKDF-like construction."""
-        return hashlib.sha256(self._master_key + purpose).digest()
+        """
+        Derive a purpose-specific key using HKDF (RFC 5869).
+
+        HKDF is the industry standard for key derivation, used by TLS 1.3,
+        Signal Protocol, and most modern cryptographic systems.
+        """
+        from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+        from cryptography.hazmat.primitives import hashes
+
+        hkdf = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=None,
+            info=purpose,
+        )
+        return hkdf.derive(self._master_key)
 
     # ── Hashing ──────────────────────────────────────────────────────────
 
