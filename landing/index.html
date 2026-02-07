@@ -8,6 +8,10 @@
     <meta property="og:title" content="DiaryVault Memory Layer — Own Your Life Story Forever">
     <meta property="og:description" content="An open-source memory layer for humans. Cryptographically verified, encrypted, permanent memory records.">
     <meta property="og:type" content="website">
+    <link rel="icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -57,10 +61,8 @@
         }
         .nav-logo {
             width: 32px; height: 32px; border-radius: 8px;
-            background: var(--navy);
-            display: flex; align-items: center; justify-content: center;
+            object-fit: contain;
         }
-        .nav-logo svg { width: 18px; height: 18px; }
         .nav-name {
             font-family: var(--body); font-weight: 600;
             font-size: 0.95rem; color: var(--navy-deep);
@@ -407,13 +409,7 @@
 <!-- NAV -->
 <nav>
     <a href="https://diaryvault.com" class="nav-brand">
-        <div class="nav-logo">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="4" y="3" width="16" height="18" rx="2" fill="#3d6090" stroke="#e8cc8a" stroke-width="1.5"/>
-                <rect x="9" y="9" width="6" height="5" rx="1" fill="#e8cc8a"/>
-                <circle cx="12" cy="8" r="2" fill="none" stroke="#e8cc8a" stroke-width="1.5"/>
-            </svg>
-        </div>
+        <img src="logo.png" alt="DiaryVault" class="nav-logo">
         <span class="nav-name">DiaryVault</span>
     </a>
     <ul class="nav-links">
