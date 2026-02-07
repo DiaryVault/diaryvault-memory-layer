@@ -11,7 +11,7 @@ Your journal. Your memories. Your keys. Immutable. Verifiable. Forever.
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 <p align="center">
-  <img src="demo.svg" alt="DiaryVault Memory Layer Demo" width="700">
+  <img src="demo.gif" alt="DiaryVault Memory Layer Demo" width="700">
 </p>
 
 ---
