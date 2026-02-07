@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiaryVault Memory Layer — An Open-Source Memory Layer for Humans</title>
+    <meta name="description" content="Cryptographically verified, encrypted, permanent memory records. Your journal. Your keys. Forever.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --surface: #111114;
+            --border: #2a2a30;
+            --text: #e8e6e3;
+            --text-dim: #8a8a94;
+            --accent: #00d4aa;
+            --accent-glow: rgba(0, 212, 170, 0.12);
+            --warm: #f5c542;
+            --mono: 'DM Mono', monospace;
+            --serif: 'Newsreader', Georgia, serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--serif);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed; top: 0; width: 100%;
+            padding: 1.5rem 3rem;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100;
+            background: rgba(10,10,12,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(42,42,48,0.4);
+        }
+        .logo { font-family: var(--mono); font-size: 0.85rem; font-weight: 500; letter-spacing: 0.08em; color: var(--accent); text-decoration: none; }
+        .nav-links { display: flex; gap: 2rem; list-style: none; }
+        .nav-links a { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em; color: var(--text-dim); text-decoration: none; text-transform: uppercase; transition: color 0.3s; }
+        .nav-links a:hover { color: var(--accent); }
+
+        /* ── HERO ── */
+        .hero {
+            min-height: 100vh;
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 8rem 3rem 6rem;
+            max-width: 880px; margin: 0 auto;
+            position: relative;
+        }
+        .hero-tag {
+            font-family: var(--mono); font-size: 0.72rem;
+            color: var(--accent); letter-spacing: 0.18em;
+            text-transform: uppercase; margin-bottom: 2rem;
+            opacity: 0; animation: fadeUp 0.8s ease forwards 0.2s;
+        }
+        .hero h1 {
+            font-family: var(--serif); font-size: clamp(2.5rem, 5.5vw, 4.2rem);
+            font-weight: 600; line-height: 1.15; margin-bottom: 2rem;
+            opacity: 0; animation: fadeUp 0.8s ease forwards 0.4s;
+        }
+        .hero h1 em { font-style: italic; color: var(--accent); }
+        .hero-sub {
+            font-size: 1.2rem; color: var(--text-dim); max-width: 580px; margin-bottom: 3rem;
+            opacity: 0; animation: fadeUp 0.8s ease forwards 0.6s;
+        }
+        .hero-actions {
+            display: flex; gap: 1rem; flex-wrap: wrap;
+            opacity: 0; animation: fadeUp 0.8s ease forwards 0.8s;
+        }
+        .btn-primary {
+            font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.05em;
+            padding: 0.85rem 2rem; background: var(--accent); color: var(--bg);
+            border: none; cursor: pointer; text-decoration: none; font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover { background: #00eebb; box-shadow: 0 0 40px var(--accent-glow); }
+        .btn-ghost {
+            font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.05em;
+            padding: 0.85rem 2rem; background: transparent; color: var(--text-dim);
+            border: 1px solid var(--border); cursor: pointer; text-decoration: none;
+            transition: all 0.3s;
+        }
+        .btn-ghost:hover { color: var(--text); border-color: var(--text-dim); }
+
+        .hash-float {
+            position: absolute; right: -2%; top: 45%;
+            transform: rotate(90deg); transform-origin: right center;
+            font-family: var(--mono); font-size: 0.6rem;
+            color: rgba(0,212,170,0.08); letter-spacing: 0.3em;
+            white-space: nowrap; user-select: none;
+        }
+
+        /* ── SECTIONS ── */
+        section { padding: 7rem 3rem; max-width: 880px; margin: 0 auto; }
+        .section-label {
+            font-family: var(--mono); font-size: 0.68rem;
+            color: var(--accent); letter-spacing: 0.18em;
+            text-transform: uppercase; margin-bottom: 1.5rem;
+        }
+        .section-title {
+            font-family: var(--serif); font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+            font-weight: 600; line-height: 1.25; margin-bottom: 1.5rem;
+        }
+        .section-body { color: var(--text-dim); font-size: 1.05rem; max-width: 620px; }
+        .section-body + .section-body { margin-top: 1rem; }
+
+        /* ── PROBLEM ── */
+        .problem-grid {
+            margin-top: 3rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1px; background: var(--border);
+        }
+        .problem-card {
+            background: var(--surface); padding: 2rem;
+        }
+        .problem-icon { font-size: 1.6rem; margin-bottom: 1rem; }
+        .problem-card h3 {
+            font-family: var(--mono); font-size: 0.78rem;
+            letter-spacing: 0.04em; margin-bottom: 0.6rem; color: var(--text);
+        }
+        .problem-card p { font-size: 0.9rem; color: var(--text-dim); line-height: 1.6; }
+
+        /* ── CODE DEMO ── */
+        .code-section { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .code-section section { max-width: 880px; }
+        .code-block {
+            margin-top: 2rem; background: var(--bg);
+            border: 1px solid var(--border); padding: 2rem;
+            overflow-x: auto; position: relative;
+        }
+        .code-block::before {
+            content: 'python'; position: absolute; top: 0.6rem; right: 1rem;
+            font-family: var(--mono); font-size: 0.65rem;
+            color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase;
+        }
+        .code-block pre {
+            font-family: var(--mono); font-size: 0.82rem;
+            line-height: 1.8; color: var(--text-dim);
+        }
+        .code-block .kw { color: var(--accent); }
+        .code-block .str { color: var(--warm); }
+        .code-block .cm { color: #555; }
+        .code-block .fn { color: #a78bfa; }
+
+        /* ── ARCHITECTURE ── */
+        .arch-flow {
+            margin-top: 3rem;
+            display: flex; flex-direction: column; gap: 0;
+        }
+        .arch-layer {
+            border: 1px solid var(--border); padding: 1.8rem 2rem;
+            position: relative;
+            background: var(--bg);
+            transition: all 0.3s;
+        }
+        .arch-layer:hover {
+            border-color: var(--accent);
+            background: rgba(0,212,170,0.02);
+        }
+        .arch-layer + .arch-layer { margin-top: -1px; }
+        .arch-num {
+            font-family: var(--mono); font-size: 0.65rem;
+            color: var(--accent); letter-spacing: 0.1em;
+            margin-bottom: 0.4rem;
+        }
+        .arch-layer h3 {
+            font-family: var(--serif); font-size: 1.15rem;
+            font-weight: 600; margin-bottom: 0.5rem;
+        }
+        .arch-layer p { color: var(--text-dim); font-size: 0.9rem; }
+        .arch-arrow {
+            text-align: center; padding: 0.5rem 0;
+            font-family: var(--mono); font-size: 0.7rem; color: var(--accent); opacity: 0.4;
+        }
+
+        /* ── FEATURES ── */
+        .features-grid {
+            margin-top: 3rem;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+            background: var(--border);
+        }
+        .feature {
+            background: var(--bg); padding: 2.5rem 2rem;
+        }
+        .feature-icon {
+            font-family: var(--mono); font-size: 0.65rem;
+            color: var(--accent); letter-spacing: 0.12em;
+            text-transform: uppercase; margin-bottom: 1rem;
+        }
+        .feature h3 {
+            font-family: var(--serif); font-size: 1.1rem;
+            font-weight: 600; margin-bottom: 0.6rem;
+        }
+        .feature p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+
+        /* ── USE CASES ── */
+        .use-cases {
+            margin-top: 3rem;
+            display: flex; flex-direction: column; gap: 0;
+        }
+        .use-case {
+            display: flex; justify-content: space-between; align-items: baseline;
+            padding: 1.3rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .use-case:first-child { border-top: 1px solid var(--border); }
+        .use-case-name {
+            font-family: var(--serif); font-size: 1.1rem; font-weight: 600;
+        }
+        .use-case-desc {
+            font-family: var(--mono); font-size: 0.75rem;
+            color: var(--text-dim); text-align: right;
+        }
+
+        /* ── OPEN SOURCE ── */
+        .oss-split {
+            margin-top: 3rem;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+            background: var(--border);
+        }
+        .oss-col { background: var(--bg); padding: 2.5rem 2rem; }
+        .oss-col h3 {
+            font-family: var(--mono); font-size: 0.72rem;
+            letter-spacing: 0.1em; text-transform: uppercase;
+            margin-bottom: 1.2rem;
+        }
+        .oss-col.open h3 { color: var(--accent); }
+        .oss-col.proprietary h3 { color: var(--warm); }
+        .oss-item {
+            font-size: 0.92rem; color: var(--text-dim);
+            padding: 0.4rem 0; border-bottom: 1px solid rgba(42,42,48,0.3);
+        }
+        .oss-item:last-child { border-bottom: none; }
+
+        /* ── CTA ── */
+        .cta-section {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+        }
+        .cta-section section {
+            text-align: center;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .cta-section .section-title { max-width: 600px; }
+        .cta-section .section-body { text-align: center; margin-bottom: 2.5rem; }
+        .cta-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+        /* ── FOOTER ── */
+        footer {
+            padding: 4rem 3rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        .footer-brand {
+            font-family: var(--mono); font-size: 0.72rem;
+            color: var(--text-dim); letter-spacing: 0.08em;
+            margin-bottom: 1rem;
+        }
+        .footer-links {
+            display: flex; gap: 2rem; justify-content: center;
+            list-style: none; margin-bottom: 1.5rem;
+        }
+        .footer-links a {
+            font-family: var(--mono); font-size: 0.7rem;
+            color: var(--text-dim); text-decoration: none;
+            letter-spacing: 0.04em; transition: color 0.3s;
+        }
+        .footer-links a:hover { color: var(--accent); }
+        .footer-copy {
+            font-family: var(--mono); font-size: 0.65rem;
+            color: rgba(138,138,148,0.5); letter-spacing: 0.04em;
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .reveal {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 700px) {
+            nav { padding: 1rem 1.5rem; }
+            .nav-links { gap: 1rem; }
+            .hero, section { padding-left: 1.5rem; padding-right: 1.5rem; }
+            .problem-grid, .features-grid, .oss-split { grid-template-columns: 1fr; }
+            .use-case { flex-direction: column; gap: 0.3rem; }
+            .use-case-desc { text-align: left; }
+            .hash-float { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+    <a href="https://diaryvault.com" class="logo">◆ DIARYVAULT</a>
+    <ul class="nav-links">
+        <li><a href="#problem">Why</a></li>
+        <li><a href="#how">How</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="https://github.com/diaryvault/memory-layer">GitHub</a></li>
+        <li><a href="https://diaryvault.com">App</a></li>
+    </ul>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+    <p class="hero-tag">Open Source · MIT License · Privacy First</p>
+    <h1>An open-source<br><em>memory layer</em><br>for humans.</h1>
+    <p class="hero-sub">
+        Cryptographically verified, encrypted, permanent memory records.
+        Your journal. Your keys. Your life story — forever.
+    </p>
+    <div class="hero-actions">
+        <a href="https://github.com/diaryvault/memory-layer" class="btn-primary">View on GitHub</a>
+        <a href="#how" class="btn-ghost">See How It Works</a>
+    </div>
+    <div class="hash-float">sha256:a7f3b2c1d4e5f6a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2</div>
+</header>
+
+<!-- PROBLEM -->
+<section id="problem">
+    <div class="reveal">
+        <p class="section-label">The Problem</p>
+        <h2 class="section-title">Humans have no black box.</h2>
+        <p class="section-body">
+            Planes have flight recorders. Cars have dash cams. Companies have audit logs.
+            But the most complex system on Earth — a human life — has no verifiable,
+            tamper-proof record. Your memories degrade. Your data is scattered across
+            platforms you don't control. And AI can now forge anything.
+        </p>
+    </div>
+    <div class="problem-grid reveal">
+        <div class="problem-card">
+            <div class="problem-icon">🧠</div>
+            <h3>Memory Degrades</h3>
+            <p>You forget 70% of new information within 24 hours. Your most important decisions fade into fragments.</p>
+        </div>
+        <div class="problem-card">
+            <div class="problem-icon">🔓</div>
+            <h3>Data is Scattered</h3>
+            <p>Your life is stored across dozens of apps, platforms, and services — none of which you truly own.</p>
+        </div>
+        <div class="problem-card">
+            <div class="problem-icon">🤖</div>
+            <h3>Reality is Forgeable</h3>
+            <p>AI can generate fake photos, voices, text, and video. Proving what's real is getting harder every day.</p>
+        </div>
+    </div>
+</section>
+
+<!-- CODE DEMO -->
+<div class="code-section" id="how">
+    <section>
+        <div class="reveal">
+            <p class="section-label">Quick Start</p>
+            <h2 class="section-title">Five lines to permanent memory.</h2>
+            <p class="section-body">
+                Install the SDK. Create a vault. Write a memory.
+                It's hashed, encrypted, signed, and optionally anchored to a blockchain.
+            </p>
+        </div>
+        <div class="code-block reveal">
+<pre><span class="kw">from</span> diaryvault_memory <span class="kw">import</span> MemoryVault
+
+<span class="cm"># Initialize your vault</span>
+vault = MemoryVault(<span class="fn">encryption_key</span>=<span class="str">"your-secret-key"</span>)
+
+<span class="cm"># Create an immutable memory</span>
+memory = vault.<span class="fn">create</span>(
+    <span class="fn">content</span>=<span class="str">"Today I decided to quit my job and start a company. "</span>
+            <span class="str">"I've never been more terrified or more alive."</span>,
+    <span class="fn">tags</span>=[<span class="str">"career"</span>, <span class="str">"milestone"</span>]
+)
+
+<span class="cm"># ✓ SHA-256 hashed</span>
+<span class="cm"># ✓ AES-256 encrypted</span>
+<span class="cm"># ✓ Timestamped & signed</span>
+
+<span class="kw">print</span>(memory.hash)       <span class="cm"># a7f3b2c1d4e5...</span>
+<span class="kw">print</span>(memory.verified)   <span class="cm"># True</span>
+
+<span class="cm"># Anchor to permanent storage</span>
+vault.<span class="fn">anchor</span>(memory, <span class="fn">backend</span>=<span class="str">"arweave"</span>)</pre>
+        </div>
+    </section>
+</div>
+
+<!-- ARCHITECTURE -->
+<section id="architecture">
+    <div class="reveal">
+        <p class="section-label">Architecture</p>
+        <h2 class="section-title">Four layers. One truth.</h2>
+        <p class="section-body">
+            Every memory flows through capture, synthesis, verification, and permanence —
+            each layer adding a guarantee that your record is real, private, and enduring.
+        </p>
+    </div>
+    <div class="arch-flow reveal">
+        <div class="arch-layer">
+            <p class="arch-num">01</p>
+            <h3>Capture Layer</h3>
+            <p>Manual entries, AI agents, API integrations, photo and voice capture. Everything starts here.</p>
+        </div>
+        <div class="arch-arrow">▼</div>
+        <div class="arch-layer">
+            <p class="arch-num">02</p>
+            <h3>Synthesis Layer</h3>
+            <p>AI narrative generation, pattern detection, emotional analysis, cross-referencing. Raw data becomes story.</p>
+        </div>
+        <div class="arch-arrow">▼</div>
+        <div class="arch-layer">
+            <p class="arch-num">03</p>
+            <h3>Verification Layer</h3>
+            <p>SHA-256 hashing, AES-256-GCM encryption, HMAC signing, Merkle trees. Every byte is provable.</p>
+        </div>
+        <div class="arch-arrow">▼</div>
+        <div class="arch-layer">
+            <p class="arch-num">04</p>
+            <h3>Permanence Layer</h3>
+            <p>Local encrypted storage, Arweave, Ethereum L2, IPFS. Choose your level of forever.</p>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+    <div class="reveal">
+        <p class="section-label">Features</p>
+        <h2 class="section-title">Built for paranoia. Designed for humans.</h2>
+    </div>
+    <div class="features-grid reveal">
+        <div class="feature">
+            <p class="feature-icon">◆ Encryption</p>
+            <h3>Military-Grade Privacy</h3>
+            <p>AES-256-GCM encryption happens on your device. Your key never leaves. Not even we can read your memories.</p>
+        </div>
+        <div class="feature">
+            <p class="feature-icon">◆ Verification</p>
+            <h3>Cryptographic Proof</h3>
+            <p>Every entry is SHA-256 hashed, timestamped, and signed. Prove exactly when you wrote what you wrote.</p>
+        </div>
+        <div class="feature">
+            <p class="feature-icon">◆ Permanence</p>
+            <h3>Blockchain Anchoring</h3>
+            <p>Optionally anchor hashes to Arweave, Ethereum L2, or IPFS. Tamper-proof. No tokens required.</p>
+        </div>
+        <div class="feature">
+            <p class="feature-icon">◆ Agents</p>
+            <h3>AI Capture Agents</h3>
+            <p>Pluggable agents that autonomously capture, synthesize, and enrich your daily memories. Bring your own LLM.</p>
+        </div>
+        <div class="feature">
+            <p class="feature-icon">◆ Format</p>
+            <h3>Open .dvmem Format</h3>
+            <p>Documented, open memory format. Your data is never locked in. Export everything, anytime, forever.</p>
+        </div>
+        <div class="feature">
+            <p class="feature-icon">◆ Legacy</p>
+            <h3>Dead Man's Switch</h3>
+            <p>Designate trusted parties who inherit access after a configurable period of inactivity.</p>
+        </div>
+    </div>
+</section>
+
+<!-- USE CASES -->
+<section>
+    <div class="reveal">
+        <p class="section-label">Use Cases</p>
+        <h2 class="section-title">Not just a journal. Infrastructure.</h2>
+    </div>
+    <div class="use-cases reveal">
+        <div class="use-case">
+            <span class="use-case-name">Digital Legacy</span>
+            <span class="use-case-desc">Preserve your life story for future generations</span>
+        </div>
+        <div class="use-case">
+            <span class="use-case-name">Legal Evidence</span>
+            <span class="use-case-desc">Timestamped, tamper-proof personal records</span>
+        </div>
+        <div class="use-case">
+            <span class="use-case-name">AI Twin Training</span>
+            <span class="use-case-desc">Structured life data for your personal AI</span>
+        </div>
+        <div class="use-case">
+            <span class="use-case-name">Health Timeline</span>
+            <span class="use-case-desc">Verifiable medical history & symptom tracking</span>
+        </div>
+        <div class="use-case">
+            <span class="use-case-name">Estate Planning</span>
+            <span class="use-case-desc">Secure vault with beneficiary access controls</span>
+        </div>
+        <div class="use-case">
+            <span class="use-case-name">Proof of Humanity</span>
+            <span class="use-case-desc">Continuous identity through verified narrative</span>
+        </div>
+    </div>
+</section>
+
+<!-- OPEN SOURCE MODEL -->
+<section>
+    <div class="reveal">
+        <p class="section-label">Open Core Model</p>
+        <h2 class="section-title">The protocol is free. The product is premium.</h2>
+        <p class="section-body">
+            The Memory Layer SDK is MIT-licensed. Build on it, fork it, self-host it.
+            DiaryVault is the beautiful consumer app built on top.
+        </p>
+    </div>
+    <div class="oss-split reveal">
+        <div class="oss-col open">
+            <h3>◆ Open Source (MIT)</h3>
+            <div class="oss-item">Core SDK & crypto engine</div>
+            <div class="oss-item">Memory format spec (.dvmem)</div>
+            <div class="oss-item">Hash verification protocol</div>
+            <div class="oss-item">Encryption layer</div>
+            <div class="oss-item">Agent framework</div>
+            <div class="oss-item">Anchor backends</div>
+        </div>
+        <div class="oss-col proprietary">
+            <h3>◆ DiaryVault App</h3>
+            <div class="oss-item">Polished journaling UX</div>
+            <div class="oss-item">iOS & Android apps</div>
+            <div class="oss-item">AI writing prompts & reflection</div>
+            <div class="oss-item">Managed cloud sync (E2EE)</div>
+            <div class="oss-item">Premium AI synthesis</div>
+            <div class="oss-item">Managed anchoring service</div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+    <section>
+        <div class="reveal">
+            <p class="section-label">Get Started</p>
+            <h2 class="section-title">Own your life story forever.</h2>
+            <p class="section-body">
+                The Memory Layer is free, open source, and ready to use.
+                Start preserving your memories today.
+            </p>
+            <div class="cta-actions">
+                <a href="https://github.com/diaryvault/memory-layer" class="btn-primary">Star on GitHub</a>
+                <a href="https://diaryvault.com" class="btn-ghost">Try DiaryVault App</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- FOOTER -->
+<footer>
+    <p class="footer-brand">◆ DIARYVAULT MEMORY LAYER</p>
+    <ul class="footer-links">
+        <li><a href="https://github.com/diaryvault/memory-layer">GitHub</a></li>
+        <li><a href="https://diaryvault.com">DiaryVault App</a></li>
+        <li><a href="https://twitter.com/diaryvault">Twitter</a></li>
+        <li><a href="https://discord.gg/diaryvault">Discord</a></li>
+    </ul>
+    <p class="footer-copy">MIT License · Built by DiaryVault · Own your memory.</p>
+</footer>
+
+<script>
+    // Intersection observer for reveal animations
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Smooth scroll for nav links
+    document.querySelectorAll('a[href^="#"]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(link.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+</body>
+</html>
