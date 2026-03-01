@@ -444,3 +444,79 @@ class MemoryVault:
 
     def __len__(self) -> int:
         return len(self._memories)
+
+
+    # ── Agent Context Sharing ────────────────────────────────────────────
+
+    def share(
+        self,
+        request: "ContextRequest",
+        allowed_tags: Optional[list[str]] = None,
+        denied_tags: Optional[list[str]] = None,
+        max_memories: Optional[int] = None,
+    ) -> "ContextResponse":
+        """
+        Selectively share memories with an agent.
+
+        The user controls exactly what gets shared. Each shared memory
+        includes its cryptographic proof so the agent can verify
+        authenticity independently.
+
+        Args:
+            request: The agent's ContextRequest.
+            allowed_tags: Tags the user permits sharing. If None, uses
+                         request.scope as the allowed set.
+            denied_tags: Tags to explicitly block (overrides allowed).
+            max_memories: Override max memories to share.
+
+        Returns:
+            A ContextResponse with verified, selectively shared memories.
+        """
+        from .context import ContextResponse, SharedMemory
+
+        # Determine what tags are allowed
+        permitted = set(allowed_tags or request.scope)
+        blocked = set(denied_tags or [])
+        effective_scope = permitted - blocked
+
+        # Find matching memories
+        matching = []
+        for memory in self._memories.values():
+            mem_tags = set(memory.metadata.tags)
+            if mem_tags.intersection(effective_scope):
+                matching.append(memory)
+
+        # Sort by recency
+        matching.sort(key=lambda m: m.created_at, reverse=True)
+
+        # Apply limit
+        limit = max_memories or request.max_memories
+        matching = matching[:limit]
+
+        # Build shared memories with verification
+        shared = []
+        for memory in matching:
+            is_valid = self.verify(memory)
+            shared.append(SharedMemory(
+                memory_id=memory.id,
+                content=memory.content,
+                tags=memory.metadata.tags,
+                hash=memory.hash,
+                signature=memory.signature,
+                created_at=memory.created_at,
+                verified=is_valid,
+            ))
+
+        # Compute what was granted vs denied
+        requested_scope = set(request.scope)
+        scope_granted = list(requested_scope.intersection(effective_scope))
+        scope_denied = list(requested_scope - effective_scope)
+
+        return ContextResponse(
+            request_id=request.request_id,
+            agent_id=request.agent_id,
+            vault_merkle_root=self.compute_merkle_root(),
+            shared_memories=shared,
+            scope_granted=scope_granted,
+            scope_denied=scope_denied,
+        )
