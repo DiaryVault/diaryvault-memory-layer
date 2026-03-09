@@ -182,17 +182,15 @@ DiaryVault Memory Layer is one half of a trust equation for the agent era:
 
 ## Roadmap
 
-- [x] Core SDK — hash, encrypt, verify, store
-- [x] Memory format spec (`.dvmem`)
-- [x] Agent context layer — selective, verified sharing (v0.2)
-- [ ] Arweave anchoring (v0.3)
-- [ ] Ethereum L2 anchoring (v0.3)
-- [ ] AI synthesis agents (v0.4)
-- [ ] Photo/voice capture agents (v0.5)
-- [ ] Dead man's switch (v0.6)
-- [ ] Personal AI training export (v0.7)
-- [ ] Mobile SDK (v0.8)
-- [ ] DiaryVault app integration (v1.0)
+- [x] v0.1 — Core SDK: hash, encrypt, verify, store, `.dvmem` format
+- [x] v0.2 — Agent Context Layer: selective, verified sharing
+- [ ] v0.3 — Personal AI Export: fine-tuning datasets, RAG embeddings, knowledge graphs
+- [ ] v0.4 — Blockchain Anchoring: Arweave + Ethereum L2 (Base)
+- [ ] v0.5 — AI Synthesis Agents: calendar capture, daily summary, photo description
+- [ ] v0.6 — Rich Capture: photo, voice, health data agents
+- [ ] v0.7 — Dead Man's Switch: inactivity threshold, beneficiary access
+- [ ] v0.8 — Mobile SDK (iOS/Android)
+- [ ] v1.0 — DiaryVault app integration
 
 ---
 

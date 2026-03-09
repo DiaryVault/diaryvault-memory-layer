@@ -157,7 +157,9 @@ class TestVaultShare(unittest.TestCase):
     """Integration tests for vault.share() with the context layer."""
 
     def setUp(self):
-        self.vault = MemoryVault(encryption_key="test-key-for-context-layer")
+        import tempfile
+        self.tmpdir = tempfile.mkdtemp()
+        self.vault = MemoryVault(encryption_key="test-key-for-context-layer", storage_dir=self.tmpdir)
         # Create test memories with different tags
         self.vault.create("I prefer dark mode and minimal UI", tags=["preference"])
         self.vault.create("Meeting with client at 3pm about Q2 targets", tags=["work"])
