@@ -11,3 +11,9 @@ build/
 venv/
 dist/
 *.egg-info
+venv/
+dist/
+build/
+*.egg-info
+__pycache__/
+.pytest_cache/
