@@ -1,19 +1,41 @@
+# Python bytecode
 __pycache__/
 *.py[cod]
-*.egg-info/
-dist/
-build/
-.pytest_cache/
-.coverage
-*.egg
-.env
+*$py.class
+
+# Virtual environments
 .venv/
 venv/
-dist/
-*.egg-info
-venv/
-dist/
+env/
+
+# Packaging
 build/
-*.egg-info
-__pycache__/
+dist/
+*.egg-info/
+*.egg
+
+# Test and coverage output
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Linters and type checkers
+.ruff_cache/
+.mypy_cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary files
+*.log
+*.tmp
+*.swp

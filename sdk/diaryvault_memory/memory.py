@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """
 Memory data model — the fundamental unit of the Memory Layer.
 
 A Memory is an immutable, cryptographically verified record of a moment in time.
 """
+
+from __future__ import annotations
 
 import json
 import uuid

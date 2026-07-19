@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Agent Context Layer — Selective, verified memory sharing for AI agents.
 
@@ -21,6 +19,8 @@ Usage:
     # Agent side: verify what they received
     assert response.verify_all()  # Every memory is hash-verified
 """
+
+from __future__ import annotations
 
 import json
 import uuid

@@ -1,7 +1,6 @@
 """
 Tests for the Agent Context Layer (v0.2).
 """
-import json
 import unittest
 from diaryvault_memory import (
     MemoryVault,

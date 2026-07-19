@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Anchor backends for the permanence layer.
 
@@ -12,6 +10,8 @@ Backends:
 - EthereumAnchor: L2 hash anchoring on Base/Arbitrum (coming soon)
 - IPFSAnchor: Content-addressed storage on IPFS (coming soon)
 """
+
+from __future__ import annotations
 
 import json
 import os

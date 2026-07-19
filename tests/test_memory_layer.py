@@ -40,8 +40,8 @@ class TestMemoryCrypto:
         """Hash verification catches tampering."""
         content = "Original content"
         content_hash = self.crypto.hash_content(content)
-        assert self.crypto.verify_hash(content, content_hash) == True
-        assert self.crypto.verify_hash("Tampered content", content_hash) == False
+        assert self.crypto.verify_hash(content, content_hash)
+        assert not self.crypto.verify_hash("Tampered content", content_hash)
 
     def test_encrypt_decrypt_roundtrip(self):
         """Content survives encryption/decryption."""
@@ -73,8 +73,8 @@ class TestMemoryCrypto:
         """Signature verification works."""
         content_hash = self.crypto.hash_content("Test content")
         signature = self.crypto.sign(content_hash)
-        assert self.crypto.verify_signature(content_hash, signature) == True
-        assert self.crypto.verify_signature("fake-hash", signature) == False
+        assert self.crypto.verify_signature(content_hash, signature)
+        assert not self.crypto.verify_signature("fake-hash", signature)
 
     def test_merkle_root_single(self):
         """Merkle root of single hash is the hash itself."""
@@ -111,7 +111,6 @@ class TestMemory:
 
     def test_memory_serialization(self):
         """Memory round-trips through JSON."""
-        m = Memory(content="Test", metadata=m.metadata if False else None)
         m = Memory(content="Test content")
         m.hash = "abc123"
         m.status = MemoryStatus.HASHED
@@ -168,13 +167,13 @@ class TestMemoryVault:
     def test_verify_memory(self):
         """Verification passes for untampered memory."""
         memory = self.vault.create(content="Untampered content")
-        assert self.vault.verify(memory) == True
+        assert self.vault.verify(memory)
 
     def test_verify_detects_tampering(self):
         """Verification fails if content is tampered."""
         memory = self.vault.create(content="Original")
         memory.content = "Tampered!"
-        assert self.vault.verify(memory) == False
+        assert not self.vault.verify(memory)
 
     def test_decrypt_memory(self):
         """Encrypted memories can be decrypted."""
@@ -187,7 +186,7 @@ class TestMemoryVault:
         """Memory can be anchored to local backend."""
         memory = self.vault.create(content="Anchor me")
         self.vault.anchor(memory, backend="local")
-        assert memory.is_anchored == True
+        assert memory.is_anchored
         assert len(memory.anchors) == 1
         assert memory.anchors[0].backend == "local"
 
@@ -286,8 +285,8 @@ class TestLocalAnchor:
         result = self.anchor.anchor("mem-1", "hash123", "sig456")
         assert result.backend == "local"
         assert result.anchored_at is not None
-        assert self.anchor.verify("mem-1", "hash123") == True
-        assert self.anchor.verify("mem-1", "wrong-hash") == False
+        assert self.anchor.verify("mem-1", "hash123")
+        assert not self.anchor.verify("mem-1", "wrong-hash")
 
     def test_retrieve_anchor(self):
         """Retrieve anchor data."""

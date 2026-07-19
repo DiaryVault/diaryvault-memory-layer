@@ -13,8 +13,6 @@ Supported operations:
 import hashlib
 import hmac
 import os
-import json
-from typing import Optional
 
 
 class MemoryCrypto:

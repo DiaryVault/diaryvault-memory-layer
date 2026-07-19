@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 MemoryVault — The main interface for the DiaryVault Memory Layer.
 
@@ -13,9 +11,11 @@ This is the primary class users interact with. It orchestrates:
 Usage:
     vault = MemoryVault(encryption_key="your-secret-key")
     memory = vault.create("Today was a good day.", tags=["daily"])
-    assert vault.verify(memory) == True
+    assert vault.verify(memory)
     vault.anchor(memory, backend="local")
 """
+
+from __future__ import annotations
 
 import json
 import os
@@ -26,6 +26,7 @@ from typing import Optional, Union
 from .memory import Memory, MemoryMetadata, MemoryStatus
 from .crypto import MemoryCrypto
 from .anchors import AnchorBackend, LocalAnchor
+from .context import ContextRequest, ContextResponse, SharedMemory
 
 
 class MemoryVault:
@@ -450,11 +451,11 @@ class MemoryVault:
 
     def share(
         self,
-        request: "ContextRequest",
+        request: ContextRequest,
         allowed_tags: Optional[list[str]] = None,
         denied_tags: Optional[list[str]] = None,
         max_memories: Optional[int] = None,
-    ) -> "ContextResponse":
+    ) -> ContextResponse:
         """
         Selectively share memories with an agent.
 
@@ -472,8 +473,6 @@ class MemoryVault:
         Returns:
             A ContextResponse with verified, selectively shared memories.
         """
-        from .context import ContextResponse, SharedMemory
-
         # Determine what tags are allowed
         permitted = set(allowed_tags or request.scope)
         blocked = set(denied_tags or [])

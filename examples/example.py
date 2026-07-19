@@ -87,7 +87,7 @@ print(f"  ✓ Saved to {path}\n")
 
 # ── Stats ────────────────────────────────────────────────────────
 stats = vault.stats
-print(f"Vault stats:")
+print("Vault stats:")
 print(f"  Total memories: {stats['total_memories']}")
 print(f"  Encrypted:      {stats['encrypted']}")
 print(f"  Anchored:       {stats['anchored']}")
