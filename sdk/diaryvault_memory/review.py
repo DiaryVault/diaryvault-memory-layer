@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import json
 import uuid
-from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
+from types import MappingProxyType
 from typing import Any
 
 
@@ -35,6 +35,28 @@ def _utc_now() -> str:
 def _require_text(value: str, name: str) -> None:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must not be empty")
+
+
+def _freeze(value: Any) -> Any:
+    """Recursively convert JSON-style values into immutable containers."""
+    if isinstance(value, (dict, MappingProxyType)):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+
+    return value
+
+
+def _thaw(value: Any) -> Any:
+    """Recursively convert frozen values back into plain JSON-style values."""
+    if isinstance(value, (dict, MappingProxyType)):
+        return {key: _thaw(item) for key, item in value.items()}
+
+    if isinstance(value, (list, tuple)):
+        return [_thaw(item) for item in value]
+
+    return value
 
 
 class ReviewState(str, Enum):
@@ -76,14 +98,14 @@ class Suggestion:
         object.__setattr__(
             self,
             "value",
-            deepcopy(self.value),
+            _freeze(self.value),
         )
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "suggestion_id": self.suggestion_id,
             "field_name": self.field_name,
-            "value": deepcopy(self.value),
+            "value": _thaw(self.value),
             "source": self.source,
             "model": self.model,
             "process_version": self.process_version,
@@ -96,7 +118,7 @@ class Suggestion:
         return cls(
             suggestion_id=data["suggestion_id"],
             field_name=data["field_name"],
-            value=deepcopy(data["value"]),
+            value=data["value"],
             source=data["source"],
             model=data.get("model"),
             process_version=data.get("process_version"),
@@ -121,16 +143,24 @@ class ReviewDecision:
 
         object.__setattr__(
             self,
-            "accepted_value",
-            deepcopy(self.accepted_value),
+            "outcome",
+            DecisionOutcome(self.outcome),
         )
+        object.__setattr__(
+            self,
+            "accepted_value",
+            _freeze(self.accepted_value),
+        )
+
+        if self.outcome is DecisionOutcome.REJECTED and self.accepted_value is not None:
+            raise ValueError("rejected decisions must not carry an accepted value")
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "suggestion_id": self.suggestion_id,
             "outcome": self.outcome.value,
             "reviewer": self.reviewer,
-            "accepted_value": deepcopy(self.accepted_value),
+            "accepted_value": _thaw(self.accepted_value),
             "decided_at": self.decided_at,
         }
 
@@ -140,7 +170,7 @@ class ReviewDecision:
             suggestion_id=data["suggestion_id"],
             outcome=DecisionOutcome(data["outcome"]),
             reviewer=data["reviewer"],
-            accepted_value=deepcopy(data.get("accepted_value")),
+            accepted_value=data.get("accepted_value"),
             decided_at=data["decided_at"],
         )
 
@@ -165,11 +195,22 @@ class ReviewDraft:
 
         _require_text(self.draft_id, "draft_id")
 
+        if isinstance(self.tags, str):
+            raise TypeError("tags must be a sequence of strings, not a string")
+
+        object.__setattr__(
+            self,
+            "state",
+            ReviewState(self.state),
+        )
         object.__setattr__(
             self,
             "tags",
             tuple(self.tags),
         )
+
+        for tag in self.tags:
+            _require_text(tag, "tag")
         object.__setattr__(
             self,
             "suggestions",
@@ -180,6 +221,54 @@ class ReviewDraft:
             "decisions",
             tuple(self.decisions),
         )
+
+        self._validate_invariants()
+
+    def _validate_invariants(self) -> None:
+        suggestions_by_id: dict[str, Suggestion] = {}
+
+        for suggestion in self.suggestions:
+            if suggestion.suggestion_id in suggestions_by_id:
+                raise ValueError(f"duplicate suggestion_id: {suggestion.suggestion_id}")
+
+            suggestions_by_id[suggestion.suggestion_id] = suggestion
+
+        decided: set[str] = set()
+        accepted_fields: set[str] = set()
+
+        for decision in self.decisions:
+            suggestion = suggestions_by_id.get(decision.suggestion_id)
+
+            if suggestion is None:
+                raise ValueError(
+                    f"decision references unknown suggestion: {decision.suggestion_id}"
+                )
+
+            if decision.suggestion_id in decided:
+                raise ValueError(
+                    f"suggestion has more than one decision: {decision.suggestion_id}"
+                )
+
+            decided.add(decision.suggestion_id)
+
+            if decision.outcome is DecisionOutcome.ACCEPTED:
+                if suggestion.field_name in accepted_fields:
+                    raise ValueError(
+                        "multiple accepted suggestions for field "
+                        f"{suggestion.field_name!r}"
+                    )
+
+                accepted_fields.add(suggestion.field_name)
+
+        if self.state is ReviewState.OPEN:
+            if self.completed_by is not None or self.completed_at is not None:
+                raise ValueError("open drafts must not carry completion metadata")
+        else:
+            _require_text(self.completed_by, "completed_by")
+            _require_text(self.completed_at, "completed_at")
+
+        if self.state is ReviewState.APPROVED and self.pending_suggestion_ids:
+            raise ValueError("approved drafts must have every suggestion reviewed")
 
     @property
     def pending_suggestion_ids(self) -> tuple[str, ...]:
@@ -332,7 +421,7 @@ class ReviewDraft:
 
             suggestion = suggestions[decision.suggestion_id]
 
-            resolved[suggestion.field_name] = deepcopy(decision.accepted_value)
+            resolved[suggestion.field_name] = _thaw(decision.accepted_value)
 
         return resolved
 

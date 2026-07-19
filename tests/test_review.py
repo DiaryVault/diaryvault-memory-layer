@@ -1,9 +1,13 @@
 """Tests for the pure review-domain model."""
 
+import pytest
+
 from diaryvault_memory.review import (
     DecisionOutcome,
+    ReviewDecision,
     ReviewDraft,
     ReviewState,
+    Suggestion,
 )
 
 
@@ -263,3 +267,204 @@ def test_json_roundtrip_preserves_review_state() -> None:
 
     assert restored == draft
     assert restored.resolved_fields()["location"] == "Seoul Forest"
+
+
+def test_suggestion_value_is_deeply_immutable() -> None:
+    original = ["family"]
+
+    suggestion = Suggestion(
+        field_name="tags",
+        value=original,
+        source="echo",
+    )
+
+    original.append("mutated-input")
+
+    assert suggestion.value == ("family",)
+
+    with pytest.raises(AttributeError):
+        suggestion.value = ("other",)  # type: ignore[misc]
+
+
+def test_nested_suggestion_value_is_deeply_immutable() -> None:
+    suggestion = Suggestion(
+        field_name="metadata",
+        value={"people": ["grandma"]},
+        source="echo",
+    )
+
+    with pytest.raises(TypeError):
+        suggestion.value["people"] = []
+
+    assert suggestion.value["people"] == ("grandma",)
+
+
+def test_resolved_fields_returns_detached_copies() -> None:
+    draft = ReviewDraft(content="hello").add_suggestion(
+        "metadata",
+        {"people": ["grandma"]},
+        "echo",
+        suggestion_id="suggestion-1",
+    )
+
+    draft = draft.accept("suggestion-1", reviewer="parent")
+
+    resolved = draft.resolved_fields()
+    resolved["metadata"]["people"].append("mutated-output")
+
+    assert draft.resolved_fields()["metadata"] == {"people": ["grandma"]}
+
+
+def test_rejected_decision_cannot_carry_accepted_value() -> None:
+    with pytest.raises(ValueError):
+        ReviewDecision(
+            suggestion_id="suggestion-1",
+            outcome=DecisionOutcome.REJECTED,
+            reviewer="parent",
+            accepted_value="stray",
+        )
+
+
+def test_from_dict_rejects_approved_draft_with_pending_suggestions() -> None:
+    draft = ReviewDraft(content="hello").add_suggestion(
+        "title",
+        "First laugh",
+        "echo",
+    )
+
+    data = draft.to_dict()
+    data["state"] = "approved"
+    data["completed_by"] = "parent"
+    data["completed_at"] = draft.created_at
+
+    with pytest.raises(ValueError):
+        ReviewDraft.from_dict(data)
+
+
+def test_from_dict_rejects_terminal_draft_without_completion_metadata() -> None:
+    draft = ReviewDraft(content="hello")
+
+    data = draft.to_dict()
+    data["state"] = "rejected"
+
+    with pytest.raises(ValueError):
+        ReviewDraft.from_dict(data)
+
+
+def test_from_dict_rejects_open_draft_with_completion_metadata() -> None:
+    draft = ReviewDraft(content="hello")
+
+    data = draft.to_dict()
+    data["completed_by"] = "parent"
+
+    with pytest.raises(ValueError):
+        ReviewDraft.from_dict(data)
+
+
+def test_from_dict_rejects_decision_for_unknown_suggestion() -> None:
+    draft = ReviewDraft(content="hello").add_suggestion(
+        "title",
+        "First laugh",
+        "echo",
+        suggestion_id="suggestion-1",
+    )
+
+    draft = draft.accept("suggestion-1", reviewer="parent")
+
+    data = draft.to_dict()
+    data["decisions"][0]["suggestion_id"] = "ghost"
+
+    with pytest.raises(ValueError):
+        ReviewDraft.from_dict(data)
+
+
+def test_from_dict_rejects_duplicate_suggestion_ids() -> None:
+    draft = ReviewDraft(content="hello").add_suggestion(
+        "title",
+        "First laugh",
+        "echo",
+        suggestion_id="suggestion-1",
+    )
+
+    data = draft.to_dict()
+    data["suggestions"].append(dict(data["suggestions"][0]))
+
+    with pytest.raises(ValueError):
+        ReviewDraft.from_dict(data)
+
+
+def test_from_dict_rejects_second_decision_for_same_suggestion() -> None:
+    draft = ReviewDraft(content="hello").add_suggestion(
+        "title",
+        "First laugh",
+        "echo",
+        suggestion_id="suggestion-1",
+    )
+
+    draft = draft.accept("suggestion-1", reviewer="parent")
+
+    data = draft.to_dict()
+    data["decisions"].append(dict(data["decisions"][0]))
+
+    with pytest.raises(ValueError):
+        ReviewDraft.from_dict(data)
+
+
+def test_from_dict_rejects_two_accepted_values_for_one_field() -> None:
+    draft = (
+        ReviewDraft(content="hello")
+        .add_suggestion(
+            "title",
+            "First laugh",
+            "echo",
+            suggestion_id="suggestion-1",
+        )
+        .add_suggestion(
+            "title",
+            "The giggle",
+            "echo",
+            suggestion_id="suggestion-2",
+        )
+    )
+
+    draft = draft.accept("suggestion-1", reviewer="parent")
+
+    data = draft.to_dict()
+    data["decisions"].append(
+        {
+            "suggestion_id": "suggestion-2",
+            "outcome": "accepted",
+            "reviewer": "parent",
+            "accepted_value": "The giggle",
+            "decided_at": draft.created_at,
+        }
+    )
+
+    with pytest.raises(ValueError):
+        ReviewDraft.from_dict(data)
+
+
+def test_json_roundtrip_preserves_nested_values() -> None:
+    draft = ReviewDraft(content="hello").add_suggestion(
+        "metadata",
+        {"people": ["grandma"], "weather": "sunny"},
+        "echo",
+        suggestion_id="suggestion-1",
+    )
+
+    draft = draft.accept("suggestion-1", reviewer="parent")
+    restored = ReviewDraft.from_json(draft.to_json())
+
+    assert restored == draft
+    assert restored.resolved_fields()["metadata"] == {
+        "people": ["grandma"],
+        "weather": "sunny",
+    }
+
+
+def test_tags_must_be_a_sequence_of_strings() -> None:
+    with pytest.raises(TypeError):
+        ReviewDraft(content="hello", tags="family")  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError):
+        ReviewDraft(content="hello", tags=("family", ""))
