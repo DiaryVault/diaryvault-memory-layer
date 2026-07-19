@@ -14,7 +14,7 @@
 
 ## Status
 
-The current release is **v0.3.0 Alpha**.
+The current release is **v0.4.0 Alpha**.
 
 Available now:
 
@@ -30,7 +30,9 @@ Available now:
 * Conversation history export
 * Personal knowledge graph export
 * Portable `.dvmem` records
-* In memory review model: drafts, AI suggestions, and explicit approval decisions
+* Review workflow: drafts, AI suggestions, explicit approval decisions, and derived revision history
+* Draft persistence and finalization of approved drafts into memory records
+* Review provenance carried on finalized memories and surfaced in exports
 
 Not implemented:
 
@@ -41,7 +43,6 @@ Not implemented:
 * Mobile SDKs
 * Cloud synchronization
 * Direct production app integration
-* Draft persistence and conversion of approved drafts into final memory records
 
 `LocalAnchor` is the only supported anchor backend. The Arweave and Ethereum classes are currently placeholders.
 
@@ -57,7 +58,7 @@ The principle guiding this project is:
 
 The current SDK provides storage, verification, selective sharing, and export primitives.
 
-The current source now models explicit drafts, AI suggestions, and user approval decisions in memory. Persistence, revision history, and approval aware exports arrive in a later release.
+This release implements that principle end to end: explicit drafts, AI suggestions, user approval decisions, draft persistence, finalization into tamper evident memory records that carry their full review provenance, derived revision history, and approval aware exports.
 
 ## Installation
 
@@ -204,26 +205,17 @@ An HMAC signature demonstrates possession of the same secret key. A local anchor
 * **v0.1**: Local vault, hashing, encryption, signatures, verification, and `.dvmem`
 * **v0.2**: Selective and verified agent context sharing
 * **v0.3**: JSONL, RAG, conversation, and knowledge graph exports
+* **v0.4**: Reviewable memories
+  * Draft memory records (`ReviewDraft`) with vault persistence
+  * AI suggestion records with provenance (`Suggestion`: source, model, process version, confidence)
+  * Explicit accept, edit, and reject decisions (`ReviewDecision`)
+  * Approval that requires every suggestion to be reviewed
+  * Finalization of approved drafts into memory records carrying full review provenance
+  * Derived revision history (`Revision`)
+  * Review summaries in RAG, generic JSONL, conversation, and knowledge graph exports
+  * Validated JSON round trips that reject invalid review states
 
-### In progress: v0.4 reviewable memories
-
-Implemented in the current source:
-
-* Draft memory records (`ReviewDraft`)
-* AI suggestion records with provenance (`Suggestion`: source, model, process version, confidence)
-* Suggested versus confirmed fields
-* Explicit accept, edit, and reject decisions (`ReviewDecision`)
-* Approval that requires every suggestion to be reviewed
-* Validated JSON round trips that reject invalid review states
-
-See `examples/review_workflow.py` for the full loop.
-
-Still required before the v0.4 release:
-
-* Draft persistence in the vault
-* Conversion of approved drafts into final memory records
-* Revision history
-* Approval aware exports
+See `examples/review_workflow.py` for the review loop.
 
 ### Later
 
@@ -252,7 +244,7 @@ python -m pytest tests/ -v
 python -m build
 ```
 
-The current suite contains 95 tests.
+The current suite contains 122 tests.
 
 ## Security
 

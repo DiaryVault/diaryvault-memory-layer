@@ -133,8 +133,8 @@ def main() -> None:
 
         print()
         print(
-            "Drafts, suggestions, and explicit approvals "
-            "are planned for v0.4."
+            "Drafts, suggestions, and explicit approvals: "
+            "see review_workflow.py."
         )
 
 

@@ -28,6 +28,12 @@ MemoryVault
     |
     +-- Local storage
     |
+    +-- Review drafts
+    |     +-- ReviewDraft
+    |     +-- Suggestion
+    |     +-- ReviewDecision
+    |     +-- finalize_draft
+    |
     +-- LocalAnchor
     |
     +-- Context sharing
@@ -201,10 +207,10 @@ The SDK cannot currently support these claims:
 
 ## v0.4 review workflow
 
-The review domain model is implemented in `sdk/diaryvault_memory/review.py` as pure, deeply immutable value objects. It does not persist drafts, modify `MemoryVault`, or create final `Memory` objects yet.
+The review model is implemented in `sdk/diaryvault_memory/review.py` as pure, deeply immutable value objects, and `MemoryVault` persists drafts and finalizes approved drafts into tamper evident memory records.
 
 ```text
-ReviewDraft (implemented)
+ReviewDraft (persisted by MemoryVault)
     |
     +-- Original user supplied fields
     |
@@ -216,16 +222,19 @@ ReviewDraft (implemented)
     |     +-- Confidence when available
     |
     v
-ReviewDecision records (implemented)
+ReviewDecision records
     |
     +-- Accept, optionally with an edited value
     +-- Reject
     |
     v
-Approved or rejected ReviewDraft (implemented)
+Approved ReviewDraft
     |
     v
-Persistence and final memory creation (planned)
+finalize_draft: hash, encrypt, sign, store
+    |
+    v
+Memory with metadata.custom["review"] provenance
 ```
 
 Core rules:
@@ -235,7 +244,8 @@ Core rules:
 3. Edits preserve suggestion provenance.
 4. One value per field can be accepted, and every suggestion must be reviewed before approval.
 5. Invalid review states are rejected at construction, including during deserialization.
-6. Persistence, revision history, approval aware exports, and final memory creation are planned and are not part of this model yet.
+6. Finalized memories carry their full review record, revision history is derived from that record rather than stored separately, and exports distinguish reviewed from unreviewed content.
+7. A finalized draft can never be replaced or deleted, and a draft can be finalized exactly once.
 
 ## Relationship to the DiaryVault product
 
@@ -282,18 +292,13 @@ Synthetic fixtures should be used for the reference implementation. Production u
 * Conversation history
 * Knowledge graph exports
 
-### v0.4 in progress
-
-Implemented:
+### v0.4
 
 * Draft records
 * Suggestion records with provenance
 * Explicit decision and approval records
 * Validated serialization
-
-Planned:
-
-* Persistence
-* Final memory creation
-* Revision history
+* Draft persistence
+* Finalization into memory records with review provenance
+* Derived revision history
 * Approval aware exports

@@ -468,3 +468,110 @@ def test_tags_must_be_a_sequence_of_strings() -> None:
 
     with pytest.raises(ValueError):
         ReviewDraft(content="hello", tags=("family", ""))
+
+
+def test_revision_history_orders_the_full_workflow() -> None:
+    draft = ReviewDraft(content="A moment", tags=("family",))
+
+    draft = draft.add_suggestion(
+        field_name="location",
+        value="Seoul",
+        source="echo",
+        suggestion_id="suggestion-location",
+    )
+
+    draft = draft.add_suggestion(
+        field_name="title",
+        value="A title",
+        source="echo",
+        suggestion_id="suggestion-title",
+    )
+
+    draft = draft.accept(
+        "suggestion-location",
+        reviewer="parent",
+        value="Seoul Forest",
+    )
+
+    draft = draft.reject_suggestion(
+        "suggestion-title",
+        reviewer="parent",
+    )
+
+    draft = draft.approve(reviewer="parent")
+
+    history = draft.revision_history()
+    actions = [revision.action for revision in history]
+
+    assert actions == [
+        "draft_created",
+        "suggestion_added",
+        "suggestion_added",
+        "suggestion_accepted",
+        "suggestion_rejected",
+        "draft_approved",
+    ]
+
+    accepted = history[3]
+    assert accepted.actor == "parent"
+    assert accepted.field_name == "location"
+    assert accepted.value == "Seoul Forest"
+    assert accepted.suggestion_id == "suggestion-location"
+
+    assert history[-1].actor == "parent"
+    assert history[-1].occurred_at == draft.completed_at
+
+    timestamps = [revision.occurred_at for revision in history]
+    assert timestamps == sorted(timestamps)
+
+
+def test_revision_history_for_new_draft_is_creation_only() -> None:
+    draft = ReviewDraft(content="A moment")
+
+    history = draft.revision_history()
+
+    assert len(history) == 1
+    assert history[0].action == "draft_created"
+    assert history[0].occurred_at == draft.created_at
+    assert history[0].actor is None
+
+
+def test_revision_history_records_rejection() -> None:
+    draft = ReviewDraft(content="A moment").reject(reviewer="parent")
+
+    history = draft.revision_history()
+
+    assert [revision.action for revision in history] == [
+        "draft_created",
+        "draft_rejected",
+    ]
+
+
+def test_revision_values_are_frozen_and_thaw_in_to_dict() -> None:
+    draft = ReviewDraft(content="A moment").add_suggestion(
+        field_name="metadata",
+        value={"people": ["grandma"]},
+        source="echo",
+        suggestion_id="suggestion-1",
+    )
+
+    revision = draft.revision_history()[1]
+
+    with pytest.raises(TypeError):
+        revision.value["people"] = []
+
+    assert revision.to_dict()["value"] == {"people": ["grandma"]}
+
+
+def test_revision_history_is_derived_not_stored() -> None:
+    draft = ReviewDraft(content="A moment").add_suggestion(
+        field_name="title",
+        value="A title",
+        source="echo",
+    )
+
+    assert "revisions" not in draft.to_dict()
+
+    restored = ReviewDraft.from_json(draft.to_json())
+
+    assert restored.revision_history() == draft.revision_history()

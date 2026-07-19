@@ -26,7 +26,7 @@ python -m pytest tests/ -v
 python -m build
 ```
 
-The current suite contains 68 tests.
+The current suite contains 122 tests.
 
 ## Current priorities
 

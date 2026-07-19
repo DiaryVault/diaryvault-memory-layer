@@ -16,11 +16,12 @@ from .review import (
     ReviewDecision,
     ReviewDraft,
     ReviewState,
+    Revision,
     Suggestion,
 )
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "MemoryVault",
@@ -41,5 +42,6 @@ __all__ = [
     "ReviewDecision",
     "ReviewDraft",
     "ReviewState",
+    "Revision",
     "Suggestion",
 ]
