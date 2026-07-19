@@ -27,6 +27,7 @@ from .memory import Memory, MemoryMetadata, MemoryStatus
 from .crypto import MemoryCrypto
 from .anchors import AnchorBackend, LocalAnchor
 from .context import ContextRequest, ContextResponse, SharedMemory
+from .review import ReviewDraft, ReviewState
 
 
 class MemoryVault:
@@ -57,9 +58,13 @@ class MemoryVault:
         self._storage_dir.mkdir(parents=True, exist_ok=True)
         self._default_anchor = anchor_backend or LocalAnchor()
         self._memories: dict[str, Memory] = {}
+        self._drafts_dir = self._storage_dir / "drafts"
+        self._drafts_dir.mkdir(parents=True, exist_ok=True)
+        self._draft_records: dict[str, dict] = {}
 
-        # Load existing memories from storage
+        # Load existing memories and drafts from storage
         self._load_memories()
+        self._load_drafts()
 
     # ── Core Operations ──────────────────────────────────────────────────
 
@@ -93,8 +98,7 @@ class MemoryVault:
         """
         # Build metadata
         mem_metadata = MemoryMetadata(
-            tags=tags or [],
-            **({"custom": metadata} if metadata else {})
+            tags=tags or [], **({"custom": metadata} if metadata else {})
         )
 
         # Create memory
@@ -103,26 +107,34 @@ class MemoryVault:
             metadata=mem_metadata,
         )
 
-        # Hash
-        memory.hash = self._crypto.hash_content(content)
+        return self._seal_memory(
+            memory,
+            auto_encrypt=auto_encrypt,
+            auto_anchor=auto_anchor,
+        )
+
+    def _seal_memory(
+        self,
+        memory: Memory,
+        auto_encrypt: bool = True,
+        auto_anchor: bool = False,
+    ) -> Memory:
+        """Hash, encrypt, sign, store, and optionally anchor a memory."""
+        memory.hash = self._crypto.hash_content(memory.content)
         memory.status = MemoryStatus.HASHED
 
-        # Encrypt
         if auto_encrypt:
-            ciphertext, nonce = self._crypto.encrypt(content)
+            ciphertext, nonce = self._crypto.encrypt(memory.content)
             memory.encrypted_content = ciphertext
             memory.nonce = nonce
             memory.status = MemoryStatus.ENCRYPTED
 
-        # Sign
         memory.signature = self._crypto.sign(memory.hash)
         memory.status = MemoryStatus.SIGNED
 
-        # Store locally
         self._memories[memory.id] = memory
         self._persist_memory(memory)
 
-        # Anchor if requested
         if auto_anchor:
             self.anchor(memory)
 
@@ -219,6 +231,193 @@ class MemoryVault:
 
         return self._crypto.decrypt(memory.encrypted_content, memory.nonce)
 
+    # ── Review Drafts ────────────────────────────────────────────────────
+
+    def create_draft(
+        self,
+        content: str,
+        tags: Optional[list[str]] = None,
+    ) -> ReviewDraft:
+        """
+        Create and persist an open review draft.
+
+        The draft is the entry point of the review workflow. AI
+        suggestions attach to the draft, and nothing becomes a final
+        memory until the draft is explicitly approved and finalized.
+        """
+        draft = ReviewDraft(
+            content=content,
+            tags=tuple(tags or ()),
+        )
+        return self.save_draft(draft)
+
+    def save_draft(self, draft: ReviewDraft) -> ReviewDraft:
+        """
+        Persist a review draft, creating or replacing its record.
+
+        Raises:
+            TypeError: If draft is not a ReviewDraft.
+            ValueError: If the draft has already been finalized.
+        """
+        if not isinstance(draft, ReviewDraft):
+            raise TypeError("draft must be a ReviewDraft")
+
+        record = self._draft_records.get(draft.draft_id)
+
+        if record and record.get("finalized_memory_id"):
+            raise ValueError(
+                "draft has already been finalized into memory "
+                f"{record['finalized_memory_id']}"
+            )
+
+        record = {
+            "draft_record_version": "1.0",
+            "draft": draft.to_dict(),
+            "finalized_memory_id": None,
+        }
+        self._draft_records[draft.draft_id] = record
+        self._persist_draft_record(draft.draft_id)
+        return draft
+
+    def get_draft(self, draft_id: str) -> Optional[ReviewDraft]:
+        """Get a review draft by ID."""
+        record = self._draft_records.get(draft_id)
+        if record is None:
+            return None
+        return ReviewDraft.from_dict(record["draft"])
+
+    def list_drafts(
+        self,
+        state: Optional[ReviewState] = None,
+    ) -> list[ReviewDraft]:
+        """List review drafts, optionally filtered by state, newest first."""
+        drafts = [
+            ReviewDraft.from_dict(record["draft"])
+            for record in self._draft_records.values()
+        ]
+
+        if state is not None:
+            state = ReviewState(state)
+            drafts = [d for d in drafts if d.state is state]
+
+        drafts.sort(key=lambda d: d.created_at, reverse=True)
+        return drafts
+
+    def delete_draft(self, draft_id: str) -> bool:
+        """
+        Delete a review draft.
+
+        Returns False if the draft does not exist.
+
+        Raises:
+            ValueError: If the draft has been finalized. Finalized
+                drafts are review provenance for a stored memory.
+        """
+        record = self._draft_records.get(draft_id)
+
+        if record is None:
+            return False
+
+        if record.get("finalized_memory_id"):
+            raise ValueError(
+                "cannot delete a finalized draft; it is review "
+                "provenance for memory "
+                f"{record['finalized_memory_id']}"
+            )
+
+        del self._draft_records[draft_id]
+        draft_file = self._drafts_dir / f"{draft_id}.json"
+        if draft_file.exists():
+            draft_file.unlink()
+        return True
+
+    def finalized_memory_id(self, draft_id: str) -> Optional[str]:
+        """Return the memory ID a draft was finalized into, if any."""
+        record = self._draft_records.get(draft_id)
+        if record is None:
+            return None
+        return record.get("finalized_memory_id")
+
+    def finalize_draft(
+        self,
+        draft: Union[ReviewDraft, str],
+        auto_encrypt: bool = True,
+        auto_anchor: bool = False,
+    ) -> Memory:
+        """
+        Convert an approved draft into a final tamper-evident memory.
+
+        The resulting memory carries the full review record, including
+        every suggestion, decision, and the explicit approval, under
+        metadata.custom["review"].
+
+        Raises:
+            ValueError: If the draft is unknown, not approved, or has
+                already been finalized.
+        """
+        if isinstance(draft, ReviewDraft):
+            self.save_draft(draft)
+            draft_id = draft.draft_id
+        else:
+            draft_id = draft
+
+        record = self._draft_records.get(draft_id)
+
+        if record is None:
+            raise ValueError(f"unknown draft: {draft_id}")
+
+        if record.get("finalized_memory_id"):
+            raise ValueError(
+                "draft has already been finalized into memory "
+                f"{record['finalized_memory_id']}"
+            )
+
+        stored = ReviewDraft.from_dict(record["draft"])
+
+        if stored.state is not ReviewState.APPROVED:
+            raise ValueError(
+                f"only approved drafts can be finalized; draft is {stored.state.value}"
+            )
+
+        resolved = stored.resolved_fields()
+        resolved.pop("content", None)
+        tags = resolved.pop("tags", list(stored.tags))
+        location = resolved.pop("location", None)
+        mood = resolved.pop("mood", None)
+
+        accepted = any(
+            decision.outcome.value == "accepted" for decision in stored.decisions
+        )
+
+        custom: dict = {"review": stored.to_dict()}
+        if resolved:
+            custom["confirmed_fields"] = resolved
+
+        metadata = MemoryMetadata(
+            tags=list(tags),
+            location=location,
+            mood=mood,
+            source="review",
+            ai_enriched=accepted,
+            custom=custom,
+        )
+
+        memory = Memory(
+            content=stored.content,
+            metadata=metadata,
+        )
+
+        memory = self._seal_memory(
+            memory,
+            auto_encrypt=auto_encrypt,
+            auto_anchor=auto_anchor,
+        )
+
+        record["finalized_memory_id"] = memory.id
+        self._persist_draft_record(draft_id)
+
+        return memory
+
     # ── Retrieval ────────────────────────────────────────────────────────
 
     def get(self, memory_id: str) -> Optional[Memory]:
@@ -248,10 +447,7 @@ class MemoryVault:
 
         if tags:
             tag_set = set(tags)
-            results = [
-                m for m in results
-                if tag_set.intersection(set(m.metadata.tags))
-            ]
+            results = [m for m in results if tag_set.intersection(set(m.metadata.tags))]
 
         if after:
             results = [m for m in results if m.created_at > after]
@@ -275,10 +471,7 @@ class MemoryVault:
             List of matching memories.
         """
         query_lower = query.lower()
-        return [
-            m for m in self._memories.values()
-            if query_lower in m.content.lower()
-        ]
+        return [m for m in self._memories.values() if query_lower in m.content.lower()]
 
     # ── Batch Operations ─────────────────────────────────────────────────
 
@@ -317,10 +510,7 @@ class MemoryVault:
         Returns:
             Merkle root hash, or None if vault is empty.
         """
-        hashes = [
-            m.hash for m in self._memories.values()
-            if m.hash is not None
-        ]
+        hashes = [m.hash for m in self._memories.values() if m.hash is not None]
         if not hashes:
             return None
         return self._crypto.compute_merkle_root(sorted(hashes))
@@ -378,9 +568,7 @@ class MemoryVault:
             "exported_at": datetime.now(timezone.utc).isoformat(),
             "memory_count": len(self._memories),
             "merkle_root": self.compute_merkle_root(),
-            "memories": {
-                mid: m.to_dict() for mid, m in self._memories.items()
-            },
+            "memories": {mid: m.to_dict() for mid, m in self._memories.items()},
         }
 
         with open(path, "w") as f:
@@ -399,9 +587,7 @@ class MemoryVault:
             "encrypted": sum(1 for m in memories if m.encrypted_content),
             "anchored": sum(1 for m in memories if m.is_anchored),
             "verified": sum(1 for m in memories if m.verified),
-            "tags": list(set(
-                tag for m in memories for tag in m.metadata.tags
-            )),
+            "tags": list(set(tag for m in memories for tag in m.metadata.tags)),
         }
 
     # ── Private Methods ──────────────────────────────────────────────────
@@ -422,6 +608,24 @@ class MemoryVault:
                 self._memories[memory.id] = memory
             except (json.JSONDecodeError, KeyError, TypeError):
                 continue  # Skip corrupted files
+
+    def _persist_draft_record(self, draft_id: str):
+        """Save a draft record to local storage."""
+        record = self._draft_records[draft_id]
+        draft_file = self._drafts_dir / f"{draft_id}.json"
+        with open(draft_file, "w") as f:
+            json.dump(record, f, indent=2, default=str)
+
+    def _load_drafts(self):
+        """Load all draft records from local storage."""
+        for draft_file in self._drafts_dir.glob("*.json"):
+            try:
+                with open(draft_file, "r") as f:
+                    record = json.load(f)
+                draft = ReviewDraft.from_dict(record["draft"])
+                self._draft_records[draft.draft_id] = record
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                continue  # Skip corrupted or invalid drafts
 
     def _get_anchor_backend(self, name: str) -> Optional[AnchorBackend]:
         """Get an anchor backend by name."""
@@ -445,7 +649,6 @@ class MemoryVault:
 
     def __len__(self) -> int:
         return len(self._memories)
-
 
     # ── Agent Context Sharing ────────────────────────────────────────────
 
@@ -496,15 +699,17 @@ class MemoryVault:
         shared = []
         for memory in matching:
             is_valid = self.verify(memory)
-            shared.append(SharedMemory(
-                memory_id=memory.id,
-                content=memory.content,
-                tags=memory.metadata.tags,
-                hash=memory.hash,
-                signature=memory.signature,
-                created_at=memory.created_at,
-                verified=is_valid,
-            ))
+            shared.append(
+                SharedMemory(
+                    memory_id=memory.id,
+                    content=memory.content,
+                    tags=memory.metadata.tags,
+                    hash=memory.hash,
+                    signature=memory.signature,
+                    created_at=memory.created_at,
+                    verified=is_valid,
+                )
+            )
 
         # Compute what was granted vs denied
         requested_scope = set(request.scope)
