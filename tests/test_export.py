@@ -34,7 +34,7 @@ class TestVaultExporter(unittest.TestCase):
         self.assertIn("preference", summary["unique_tags"])
         self.assertIn("work", summary["unique_tags"])
         self.assertGreater(summary["total_characters"], 0)
-        self.assertEqual(len(summary["export_formats"]), 6)
+        self.assertEqual(len(summary["export_formats"]), 7)
 
     def test_summary_filtered_by_tags(self):
         summary = self.exporter.summary(tags=["work"])

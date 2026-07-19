@@ -21,12 +21,13 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from .memory import Memory, MemoryMetadata, MemoryStatus
 from .crypto import MemoryCrypto
 from .anchors import AnchorBackend, LocalAnchor
 from .context import ContextRequest, ContextResponse, SharedMemory
+from .review import DraftStatus, MemoryDraft, MemorySuggestion
 
 
 class MemoryVault:
@@ -57,9 +58,15 @@ class MemoryVault:
         self._storage_dir.mkdir(parents=True, exist_ok=True)
         self._default_anchor = anchor_backend or LocalAnchor()
         self._memories: dict[str, Memory] = {}
+        self._drafts: dict[str, MemoryDraft] = {}
+        self._draft_dir = self._storage_dir / ".drafts"
+        self._draft_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-        # Load existing memories from storage
         self._load_memories()
+        self._load_drafts()
 
     # ── Core Operations ──────────────────────────────────────────────────
 
@@ -280,6 +287,299 @@ class MemoryVault:
             if query_lower in m.content.lower()
         ]
 
+    # ── Reviewable Drafts ─────────────────────────────────────────────
+
+    def create_draft(
+        self,
+        content: str,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict] = None,
+        source: str = "manual",
+    ) -> MemoryDraft:
+        """Create and persist a reviewable draft."""
+        draft = MemoryDraft(
+            content=content,
+            tags=tags or [],
+            metadata=metadata or {},
+            source=source,
+        )
+
+        self._drafts[draft.draft_id] = draft
+        self._persist_draft(draft)
+
+        return draft
+
+    def get_draft(
+        self,
+        draft_id: str,
+    ) -> Optional[MemoryDraft]:
+        """Get a reviewable draft by identifier."""
+        return self._drafts.get(draft_id)
+
+    def list_drafts(
+        self,
+        status: Optional[
+            Union[DraftStatus, str]
+        ] = None,
+    ) -> list[MemoryDraft]:
+        """List drafts with an optional status filter."""
+        drafts = list(
+            self._drafts.values()
+        )
+
+        if status is not None:
+            resolved_status = (
+                DraftStatus(status)
+                if isinstance(status, str)
+                else status
+            )
+
+            drafts = [
+                draft
+                for draft in drafts
+                if draft.status
+                is resolved_status
+            ]
+
+        drafts.sort(
+            key=lambda draft: (
+                draft.created_at
+            ),
+            reverse=True,
+        )
+
+        return drafts
+
+    def add_suggestion(
+        self,
+        draft: Union[MemoryDraft, str],
+        field_name: str,
+        suggested_value: Any,
+        source: str,
+        model: Optional[str] = None,
+        process_version: Optional[str] = None,
+        confidence: Optional[float] = None,
+        rationale: Optional[str] = None,
+    ) -> MemorySuggestion:
+        """Add an unconfirmed suggestion."""
+        resolved = self._resolve_draft(
+            draft
+        )
+
+        suggestion = resolved.add_suggestion(
+            field_name=field_name,
+            suggested_value=(
+                suggested_value
+            ),
+            source=source,
+            model=model,
+            process_version=(
+                process_version
+            ),
+            confidence=confidence,
+            rationale=rationale,
+        )
+
+        self._persist_draft(resolved)
+
+        return suggestion
+
+    def accept_suggestion(
+        self,
+        draft: Union[MemoryDraft, str],
+        suggestion_id: str,
+        actor: str,
+        value: Any = None,
+        note: Optional[str] = None,
+    ) -> MemorySuggestion:
+        """Accept a suggestion after review."""
+        resolved = self._resolve_draft(
+            draft
+        )
+
+        suggestion = (
+            resolved.accept_suggestion(
+                suggestion_id=(
+                    suggestion_id
+                ),
+                actor=actor,
+                value=value,
+                note=note,
+            )
+        )
+
+        self._persist_draft(resolved)
+
+        return suggestion
+
+    def reject_suggestion(
+        self,
+        draft: Union[MemoryDraft, str],
+        suggestion_id: str,
+        actor: str,
+        note: Optional[str] = None,
+    ) -> MemorySuggestion:
+        """Reject a suggestion after review."""
+        resolved = self._resolve_draft(
+            draft
+        )
+
+        suggestion = (
+            resolved.reject_suggestion(
+                suggestion_id=(
+                    suggestion_id
+                ),
+                actor=actor,
+                note=note,
+            )
+        )
+
+        self._persist_draft(resolved)
+
+        return suggestion
+
+    def update_draft_field(
+        self,
+        draft: Union[MemoryDraft, str],
+        field_name: str,
+        value: Any,
+        actor: str,
+        note: Optional[str] = None,
+    ) -> MemoryDraft:
+        """Explicitly confirm or edit a field."""
+        resolved = self._resolve_draft(
+            draft
+        )
+
+        resolved.set_field(
+            field_name=field_name,
+            value=value,
+            actor=actor,
+            note=note,
+        )
+
+        self._persist_draft(resolved)
+
+        return resolved
+
+    def approve_draft(
+        self,
+        draft: Union[MemoryDraft, str],
+        actor: str,
+        note: Optional[str] = None,
+        auto_encrypt: bool = True,
+        auto_anchor: bool = False,
+    ) -> Memory:
+        """Approve a draft and create a Memory."""
+        resolved = self._resolve_draft(
+            draft
+        )
+
+        fields = resolved.resolved_fields()
+
+        content = fields.pop(
+            "content",
+            resolved.content,
+        )
+        tags = fields.pop(
+            "tags",
+            resolved.tags,
+        )
+        metadata = fields.pop(
+            "metadata",
+            resolved.metadata,
+        )
+
+        if not isinstance(content, str):
+            raise TypeError(
+                "confirmed content must be "
+                "a string"
+            )
+
+        if (
+            not isinstance(tags, list)
+            or not all(
+                isinstance(tag, str)
+                for tag in tags
+            )
+        ):
+            raise TypeError(
+                "confirmed tags must be "
+                "a list of strings"
+            )
+
+        if not isinstance(metadata, dict):
+            raise TypeError(
+                "confirmed metadata must be "
+                "a dictionary"
+            )
+
+        resolved.approve(
+            actor=actor,
+            note=note,
+        )
+
+        custom_metadata = dict(metadata)
+
+        if fields:
+            custom_metadata[
+                "confirmed_fields"
+            ] = fields
+
+        custom_metadata["review"] = (
+            resolved.to_review_manifest()
+        )
+
+        memory = self.create(
+            content=content,
+            tags=tags,
+            metadata=custom_metadata,
+            auto_encrypt=auto_encrypt,
+            auto_anchor=auto_anchor,
+        )
+
+        memory.metadata.source = (
+            "reviewed_draft"
+        )
+        memory.metadata.ai_enriched = bool(
+            resolved.suggestions
+        )
+
+        resolved.final_memory_id = memory.id
+
+        custom_metadata["review"] = (
+            resolved.to_review_manifest()
+        )
+
+        memory.metadata.custom = (
+            custom_metadata
+        )
+
+        self._persist_memory(memory)
+        self._persist_draft(resolved)
+
+        return memory
+
+    def reject_draft(
+        self,
+        draft: Union[MemoryDraft, str],
+        actor: str,
+        note: Optional[str] = None,
+    ) -> MemoryDraft:
+        """Reject and persist an entire draft."""
+        resolved = self._resolve_draft(
+            draft
+        )
+
+        resolved.reject(
+            actor=actor,
+            note=note,
+        )
+
+        self._persist_draft(resolved)
+
+        return resolved
+
     # ── Batch Operations ─────────────────────────────────────────────────
 
     def batch_verify(self) -> dict:
@@ -406,6 +706,72 @@ class MemoryVault:
 
     # ── Private Methods ──────────────────────────────────────────────────
 
+    def _resolve_draft(
+        self,
+        draft: Union[MemoryDraft, str],
+    ) -> MemoryDraft:
+        if isinstance(draft, MemoryDraft):
+            resolved = self._drafts.get(
+                draft.draft_id
+            )
+        else:
+            resolved = self.get_draft(
+                draft
+            )
+
+        if resolved is None:
+            raise KeyError(
+                f"unknown draft: {draft}"
+            )
+
+        return resolved
+
+    def _persist_draft(
+        self,
+        draft: MemoryDraft,
+    ) -> None:
+        """Persist a draft and its review history."""
+        draft_file = (
+            self._draft_dir
+            / f"{draft.draft_id}.json"
+        )
+
+        with open(draft_file, "w") as file:
+            json.dump(
+                draft.to_dict(),
+                file,
+                indent=2,
+                default=str,
+            )
+
+    def _load_drafts(self) -> None:
+        """Load reviewable drafts from storage."""
+        for draft_file in (
+            self._draft_dir.glob("*.json")
+        ):
+            try:
+                with open(
+                    draft_file,
+                    "r",
+                ) as file:
+                    data = json.load(file)
+
+                draft = (
+                    MemoryDraft.from_dict(data)
+                )
+
+                self._drafts[
+                    draft.draft_id
+                ] = draft
+
+            except (
+                json.JSONDecodeError,
+                KeyError,
+                TypeError,
+                ValueError,
+            ):
+                continue
+
     def _persist_memory(self, memory: Memory):
         """Save a memory to local encrypted storage."""
         memory_file = self._storage_dir / f"{memory.id}.json"
@@ -460,8 +826,7 @@ class MemoryVault:
         Selectively share memories with an agent.
 
         The user controls exactly what gets shared. Each shared memory
-        includes its cryptographic proof so the agent can verify
-        authenticity independently.
+        includes stored proof fields and the vault's verification result.
 
         Args:
             request: The agent's ContextRequest.

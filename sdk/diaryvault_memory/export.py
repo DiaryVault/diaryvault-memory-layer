@@ -1,39 +1,16 @@
-"""
-Personal AI Export — Transform your vault into AI-ready formats.
-
-Export your memories as:
-- Fine-tuning datasets (JSONL for OpenAI, Anthropic, etc.)
-- RAG-ready chunks with metadata
-- Conversation-format exports
-- Personal knowledge graph (nodes + edges)
-
-Usage:
-    from diaryvault_memory import MemoryVault
-    from diaryvault_memory.export import VaultExporter
-
-    vault = MemoryVault(encryption_key="my-key")
-    exporter = VaultExporter(vault)
-
-    # Export for fine-tuning
-    exporter.to_jsonl("my_memories.jsonl", format="openai")
-
-    # Export for RAG
-    chunks = exporter.to_rag_chunks()
-
-    # Export as knowledge graph
-    graph = exporter.to_knowledge_graph()
-"""
+"""Export memories into portable and AI-ready formats."""
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
-from typing import Optional, Literal
+from dataclasses import asdict, dataclass, field
+from typing import Literal, Optional
 
 
 @dataclass
 class RAGChunk:
-    """A single chunk ready for embedding and retrieval."""
+    """A chunk ready for embedding and retrieval."""
+
     id: str
     content: str
     tags: list[str]
@@ -48,9 +25,10 @@ class RAGChunk:
 @dataclass
 class KnowledgeNode:
     """A node in a personal knowledge graph."""
+
     id: str
     label: str
-    node_type: str  # "memory", "tag", "entity", "date"
+    node_type: str
     properties: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -59,10 +37,11 @@ class KnowledgeNode:
 
 @dataclass
 class KnowledgeEdge:
-    """An edge connecting two nodes."""
+    """An edge connecting graph nodes."""
+
     source: str
     target: str
-    relation: str  # "tagged_with", "created_on", "mentions", "related_to"
+    relation: str
     properties: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -71,9 +50,14 @@ class KnowledgeEdge:
 
 @dataclass
 class KnowledgeGraph:
-    """A personal knowledge graph built from vault memories."""
-    nodes: list[KnowledgeNode] = field(default_factory=list)
-    edges: list[KnowledgeEdge] = field(default_factory=list)
+    """A graph built from vault memories."""
+
+    nodes: list[KnowledgeNode] = field(
+        default_factory=list
+    )
+    edges: list[KnowledgeEdge] = field(
+        default_factory=list
+    )
 
     @property
     def node_count(self) -> int:
@@ -85,20 +69,32 @@ class KnowledgeGraph:
 
     def to_dict(self) -> dict:
         return {
-            "nodes": [n.to_dict() for n in self.nodes],
-            "edges": [e.to_dict() for e in self.edges],
+            "nodes": [
+                node.to_dict()
+                for node in self.nodes
+            ],
+            "edges": [
+                edge.to_dict()
+                for edge in self.edges
+            ],
             "stats": {
                 "node_count": self.node_count,
                 "edge_count": self.edge_count,
-            }
+            },
         }
 
-    def to_json(self, indent: int = 2) -> str:
-        return json.dumps(self.to_dict(), indent=indent)
+    def to_json(
+        self,
+        indent: int = 2,
+    ) -> str:
+        return json.dumps(
+            self.to_dict(),
+            indent=indent,
+        )
 
 
 class VaultExporter:
-    """Export vault memories in AI-ready formats."""
+    """Export memories with optional approval filtering."""
 
     def __init__(self, vault):
         self._vault = vault
@@ -106,62 +102,104 @@ class VaultExporter:
     def to_jsonl(
         self,
         path: Optional[str] = None,
-        format: Literal["openai", "anthropic", "generic"] = "openai",
+        format: Literal[
+            "openai",
+            "anthropic",
+            "generic",
+        ] = "openai",
         system_prompt: Optional[str] = None,
         tags: Optional[list[str]] = None,
+        approved_only: bool = False,
     ) -> list[dict]:
-        """
-        Export memories as JSONL for fine-tuning.
+        """Export selected memories as JSONL."""
+        memories = self._get_memories(
+            tags,
+            approved_only=approved_only,
+        )
 
-        Args:
-            path: File path to write JSONL. If None, returns list of dicts.
-            format: Target format (openai, anthropic, generic).
-            system_prompt: Custom system prompt for conversation format.
-            tags: Filter to only memories with these tags.
-
-        Returns:
-            List of formatted training examples.
-        """
-        memories = self._get_memories(tags)
         default_system = system_prompt or (
-            "You are a personal AI assistant with deep knowledge of the user. "
-            "You understand their preferences, experiences, and context. "
-            "Respond naturally, as someone who truly knows them."
+            "You are a personal AI assistant "
+            "using memory records selected by "
+            "the user. Distinguish confirmed "
+            "records from model inference and "
+            "do not invent missing details."
         )
 
         examples = []
+
         for memory in memories:
+            approval = self._approval_metadata(
+                memory
+            )
+
             if format == "openai":
                 example = {
                     "messages": [
-                        {"role": "system", "content": default_system},
-                        {"role": "user", "content": self._generate_prompt(memory)},
-                        {"role": "assistant", "content": memory.content},
+                        {
+                            "role": "system",
+                            "content": (
+                                default_system
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                self._generate_prompt(
+                                    memory
+                                )
+                            ),
+                        },
+                        {
+                            "role": "assistant",
+                            "content": memory.content,
+                        },
                     ]
                 }
+
             elif format == "anthropic":
                 example = {
                     "messages": [
-                        {"role": "user", "content": self._generate_prompt(memory)},
-                        {"role": "assistant", "content": memory.content},
+                        {
+                            "role": "user",
+                            "content": (
+                                self._generate_prompt(
+                                    memory
+                                )
+                            ),
+                        },
+                        {
+                            "role": "assistant",
+                            "content": memory.content,
+                        },
                     ],
                     "system": default_system,
                 }
-            else:  # generic
+
+            else:
                 example = {
-                    "input": self._generate_prompt(memory),
+                    "input": self._generate_prompt(
+                        memory
+                    ),
                     "output": memory.content,
-                    "tags": memory.metadata.tags,
-                    "created_at": memory.created_at,
+                    "tags": (
+                        memory.metadata.tags
+                    ),
+                    "created_at": (
+                        memory.created_at
+                    ),
                     "hash": memory.hash,
+                    "approval": approval,
                 }
 
             examples.append(example)
 
         if path:
-            with open(path, 'w') as f:
+            with open(path, "w") as file:
                 for example in examples:
-                    f.write(json.dumps(example) + '\n')
+                    file.write(
+                        json.dumps(example)
+                        + "\n"
+                    )
 
         return examples
 
@@ -169,30 +207,63 @@ class VaultExporter:
         self,
         tags: Optional[list[str]] = None,
         include_hash: bool = True,
+        approved_only: bool = False,
     ) -> list[RAGChunk]:
-        """
-        Export memories as RAG-ready chunks with metadata.
+        """Export RAG chunks with trust metadata."""
+        memories = self._get_memories(
+            tags,
+            approved_only=approved_only,
+        )
 
-        Each chunk includes content, tags, timestamp, and hash
-        for retrieval-augmented generation pipelines.
-        """
-        memories = self._get_memories(tags)
         chunks = []
 
         for memory in memories:
-            chunk = RAGChunk(
-                id=memory.id,
-                content=memory.content,
-                tags=memory.metadata.tags,
-                created_at=memory.created_at,
-                hash=memory.hash if include_hash else "",
-                metadata={
-                    "source": "diaryvault",
-                    "verified": True,
-                    "encrypted_at_rest": True,
-                },
+            approval = self._approval_metadata(
+                memory
             )
-            chunks.append(chunk)
+
+            chunks.append(
+                RAGChunk(
+                    id=memory.id,
+                    content=memory.content,
+                    tags=memory.metadata.tags,
+                    created_at=(
+                        memory.created_at
+                    ),
+                    hash=(
+                        memory.hash
+                        if include_hash
+                        else ""
+                    ),
+                    metadata={
+                        "source": "diaryvault",
+                        "verified": (
+                            self._vault.verify(
+                                memory
+                            )
+                        ),
+                        "encrypted_at_rest": (
+                            bool(
+                                memory
+                                .encrypted_content
+                            )
+                        ),
+                        "approved": (
+                            approval["approved"]
+                        ),
+                        "approval_id": (
+                            approval.get(
+                                "approval_id"
+                            )
+                        ),
+                        "draft_id": (
+                            approval.get(
+                                "draft_id"
+                            )
+                        ),
+                    },
+                )
+            )
 
         return chunks
 
@@ -200,34 +271,61 @@ class VaultExporter:
         self,
         tags: Optional[list[str]] = None,
         extract_entities: bool = True,
+        approved_only: bool = False,
     ) -> KnowledgeGraph:
-        """
-        Build a personal knowledge graph from vault memories.
+        """Build a graph from selected memories."""
+        memories = self._get_memories(
+            tags,
+            approved_only=approved_only,
+        )
 
-        Creates nodes for memories, tags, and dates.
-        Edges represent relationships (tagged_with, created_on).
-        """
-        memories = self._get_memories(tags)
         graph = KnowledgeGraph()
-
         tag_nodes = {}
         date_nodes = {}
 
         for memory in memories:
-            # Memory node
+            approval = self._approval_metadata(
+                memory
+            )
+
             mem_node = KnowledgeNode(
                 id=f"mem_{memory.id[:8]}",
-                label=memory.content[:60] + ("..." if len(memory.content) > 60 else ""),
+                label=(
+                    memory.content[:60]
+                    + (
+                        "..."
+                        if len(memory.content)
+                        > 60
+                        else ""
+                    )
+                ),
                 node_type="memory",
                 properties={
-                    "full_content": memory.content,
+                    "full_content": (
+                        memory.content
+                    ),
                     "hash": memory.hash,
-                    "created_at": memory.created_at,
+                    "created_at": (
+                        memory.created_at
+                    ),
+                    "approved": (
+                        approval["approved"]
+                    ),
+                    "approval_id": (
+                        approval.get(
+                            "approval_id"
+                        )
+                    ),
+                    "draft_id": (
+                        approval.get(
+                            "draft_id"
+                        )
+                    ),
                 },
             )
+
             graph.nodes.append(mem_node)
 
-            # Tag nodes + edges
             for tag in memory.metadata.tags:
                 if tag not in tag_nodes:
                     tag_node = KnowledgeNode(
@@ -235,161 +333,404 @@ class VaultExporter:
                         label=tag,
                         node_type="tag",
                     )
-                    graph.nodes.append(tag_node)
-                    tag_nodes[tag] = tag_node
+                    graph.nodes.append(
+                        tag_node
+                    )
+                    tag_nodes[tag] = (
+                        tag_node
+                    )
 
-                graph.edges.append(KnowledgeEdge(
-                    source=mem_node.id,
-                    target=f"tag_{tag}",
-                    relation="tagged_with",
-                ))
+                graph.edges.append(
+                    KnowledgeEdge(
+                        source=mem_node.id,
+                        target=f"tag_{tag}",
+                        relation=(
+                            "tagged_with"
+                        ),
+                    )
+                )
 
-            # Date node + edge
-            date_str = memory.created_at[:10]  # YYYY-MM-DD
+            date_str = (
+                memory.created_at[:10]
+            )
+
             if date_str not in date_nodes:
                 date_node = KnowledgeNode(
                     id=f"date_{date_str}",
                     label=date_str,
                     node_type="date",
                 )
+
                 graph.nodes.append(date_node)
-                date_nodes[date_str] = date_node
+                date_nodes[date_str] = (
+                    date_node
+                )
 
-            graph.edges.append(KnowledgeEdge(
-                source=mem_node.id,
-                target=f"date_{date_str}",
-                relation="created_on",
-            ))
+            graph.edges.append(
+                KnowledgeEdge(
+                    source=mem_node.id,
+                    target=(
+                        f"date_{date_str}"
+                    ),
+                    relation="created_on",
+                )
+            )
 
-            # Entity extraction (simple keyword-based)
             if extract_entities:
-                entities = self._extract_entities(memory.content)
-                for entity_name, entity_type in entities:
-                    entity_id = f"entity_{entity_name.lower().replace(' ', '_')}"
-                    # Check if entity node already exists
-                    if not any(n.id == entity_id for n in graph.nodes):
-                        graph.nodes.append(KnowledgeNode(
-                            id=entity_id,
-                            label=entity_name,
-                            node_type=entity_type,
-                        ))
-                    graph.edges.append(KnowledgeEdge(
-                        source=mem_node.id,
-                        target=entity_id,
-                        relation="mentions",
-                    ))
+                entities = (
+                    self._extract_entities(
+                        memory.content
+                    )
+                )
+
+                for (
+                    entity_name,
+                    entity_type,
+                ) in entities:
+                    entity_id = (
+                        "entity_"
+                        + entity_name.lower()
+                        .replace(" ", "_")
+                    )
+
+                    if not any(
+                        node.id == entity_id
+                        for node in graph.nodes
+                    ):
+                        graph.nodes.append(
+                            KnowledgeNode(
+                                id=entity_id,
+                                label=entity_name,
+                                node_type=(
+                                    entity_type
+                                ),
+                            )
+                        )
+
+                    graph.edges.append(
+                        KnowledgeEdge(
+                            source=(
+                                mem_node.id
+                            ),
+                            target=entity_id,
+                            relation=(
+                                "mentions"
+                            ),
+                        )
+                    )
 
         return graph
 
     def to_conversation_history(
         self,
         tags: Optional[list[str]] = None,
+        approved_only: bool = False,
     ) -> list[dict]:
-        """
-        Export as a conversation history format.
-        Useful for injecting into LLM context windows.
-        """
-        memories = self._get_memories(tags)
+        """Export selected memories as context."""
+        memories = self._get_memories(
+            tags,
+            approved_only=approved_only,
+        )
+
         history = []
 
         for memory in memories:
-            history.append({
-                "role": "user",
-                "content": f"[{memory.created_at[:10]}] [{', '.join(memory.metadata.tags)}] {memory.content}",
-                "metadata": {
-                    "memory_id": memory.id,
-                    "hash": memory.hash,
-                    "verified": True,
+            approval = self._approval_metadata(
+                memory
+            )
+
+            history.append(
+                {
+                    "role": "user",
+                    "content": (
+                        f"[{memory.created_at[:10]}] "
+                        f"[{', '.join(memory.metadata.tags)}] "
+                        f"{memory.content}"
+                    ),
+                    "metadata": {
+                        "memory_id": (
+                            memory.id
+                        ),
+                        "hash": memory.hash,
+                        "verified": (
+                            self._vault.verify(
+                                memory
+                            )
+                        ),
+                        "approved": (
+                            approval["approved"]
+                        ),
+                        "approval_id": (
+                            approval.get(
+                                "approval_id"
+                            )
+                        ),
+                        "draft_id": (
+                            approval.get(
+                                "draft_id"
+                            )
+                        ),
+                    },
                 }
-            })
+            )
 
         return history
 
-    def summary(self, tags: Optional[list[str]] = None) -> dict:
+    def to_approved_manifest(
+        self,
+        tags: Optional[list[str]] = None,
+    ) -> list[dict]:
+        """Export manifests for approved memories."""
+        memories = self._get_memories(
+            tags,
+            approved_only=True,
+        )
+
+        manifests = []
+
+        for memory in memories:
+            review = (
+                memory.metadata.custom.get(
+                    "review",
+                    {},
+                )
+            )
+
+            manifests.append(
+                {
+                    "manifest_version": "1.0",
+                    "memory_id": memory.id,
+                    "hash": memory.hash,
+                    "created_at": (
+                        memory.created_at
+                    ),
+                    "tags": list(
+                        memory.metadata.tags
+                    ),
+                    "review": review,
+                }
+            )
+
+        return manifests
+
+    def summary(
+        self,
+        tags: Optional[list[str]] = None,
+        approved_only: bool = False,
+    ) -> dict:
         """Get export summary statistics."""
-        memories = self._get_memories(tags)
+        memories = self._get_memories(
+            tags,
+            approved_only=approved_only,
+        )
+
         all_tags = set()
         total_chars = 0
         dates = set()
 
-        for m in memories:
-            all_tags.update(m.metadata.tags)
-            total_chars += len(m.content)
-            dates.add(m.created_at[:10])
+        for memory in memories:
+            all_tags.update(
+                memory.metadata.tags
+            )
+            total_chars += len(
+                memory.content
+            )
+            dates.add(
+                memory.created_at[:10]
+            )
 
         return {
             "total_memories": len(memories),
-            "unique_tags": sorted(list(all_tags)),
+            "approved_only": approved_only,
+            "unique_tags": sorted(all_tags),
             "total_characters": total_chars,
             "date_range": {
-                "earliest": min(dates) if dates else None,
-                "latest": max(dates) if dates else None,
+                "earliest": (
+                    min(dates)
+                    if dates
+                    else None
+                ),
+                "latest": (
+                    max(dates)
+                    if dates
+                    else None
+                ),
             },
-            "avg_memory_length": total_chars // max(len(memories), 1),
-            "export_formats": ["openai_jsonl", "anthropic_jsonl", "generic_jsonl", "rag_chunks", "knowledge_graph", "conversation_history"],
+            "avg_memory_length": (
+                total_chars
+                // max(len(memories), 1)
+            ),
+            "export_formats": [
+                "openai_jsonl",
+                "anthropic_jsonl",
+                "generic_jsonl",
+                "rag_chunks",
+                "knowledge_graph",
+                "conversation_history",
+                "approved_manifest",
+            ],
         }
 
-    # ── Internal helpers ──────────────────────────
+    def _get_memories(
+        self,
+        tags: Optional[list[str]] = None,
+        approved_only: bool = False,
+    ) -> list:
+        all_memories = list(
+            self._vault._memories.values()
+        )
 
-    def _get_memories(self, tags: Optional[list[str]] = None) -> list:
-        """Get memories, optionally filtered by tags."""
-        all_memories = list(self._vault._memories.values())
         if tags:
             tag_set = set(tags)
+
             all_memories = [
-                m for m in all_memories
-                if set(m.metadata.tags).intersection(tag_set)
+                memory
+                for memory in all_memories
+                if set(
+                    memory.metadata.tags
+                ).intersection(tag_set)
             ]
-        all_memories.sort(key=lambda m: m.created_at)
+
+        if approved_only:
+            all_memories = [
+                memory
+                for memory in all_memories
+                if self._approval_metadata(
+                    memory
+                )["approved"]
+            ]
+
+        all_memories.sort(
+            key=lambda memory: (
+                memory.created_at
+            )
+        )
+
         return all_memories
 
-    def _generate_prompt(self, memory) -> str:
-        """Generate a natural prompt for a memory (for fine-tuning)."""
+    @staticmethod
+    def _approval_metadata(
+        memory,
+    ) -> dict:
+        review = (
+            memory.metadata.custom.get(
+                "review",
+                {},
+            )
+        )
+
+        approval = (
+            review.get("approval")
+            or {}
+        )
+
+        return {
+            "approved": bool(
+                review.get("approved")
+            ),
+            "approval_id": approval.get(
+                "approval_id"
+            ),
+            "approved_at": approval.get(
+                "approved_at"
+            ),
+            "approved_by": approval.get(
+                "actor"
+            ),
+            "draft_id": review.get(
+                "draft_id"
+            ),
+        }
+
+    @staticmethod
+    def _generate_prompt(memory) -> str:
         tags = memory.metadata.tags
+
         if "preference" in tags:
-            return "What are some of my preferences?"
-        elif "health" in tags:
-            return "Tell me about my health and wellness."
-        elif "work" in tags:
-            return "What's going on with my work?"
-        elif "financial" in tags:
-            return "What do you know about my finances?"
-        elif "personal" in tags:
-            return "Tell me something personal about myself."
-        else:
-            return "What do you remember about me?"
+            return (
+                "What are some of my "
+                "preferences?"
+            )
 
-    def _extract_entities(self, content: str) -> list[tuple[str, str]]:
-        """
-        Simple entity extraction from content.
-        Returns list of (entity_name, entity_type) tuples.
-        """
+        if "health" in tags:
+            return (
+                "Tell me about my health "
+                "and wellness."
+            )
+
+        if "work" in tags:
+            return (
+                "What's going on with "
+                "my work?"
+            )
+
+        if "financial" in tags:
+            return (
+                "What do you know about "
+                "my finances?"
+            )
+
+        if "personal" in tags:
+            return (
+                "Tell me something personal "
+                "about myself."
+            )
+
+        return "What do you remember about me?"
+
+    @staticmethod
+    def _extract_entities(
+        content: str,
+    ) -> list[tuple[str, str]]:
         entities = []
-
-        # Simple patterns — in production, use spaCy or an LLM
         words = content.split()
-        i = 0
-        while i < len(words):
-            word = words[i]
-            # Capitalized words that aren't at sentence start
-            if i > 0 and word[0].isupper() and word.isalpha() and len(word) > 2:
-                # Check for multi-word entities
-                entity = word
-                j = i + 1
-                while j < len(words) and words[j][0].isupper() and words[j].isalpha():
-                    entity += " " + words[j]
-                    j += 1
-                entities.append((entity, "entity"))
-                i = j
-            else:
-                i += 1
+        index = 0
 
-        # Deduplicate
+        while index < len(words):
+            word = words[index]
+
+            if (
+                index > 0
+                and word
+                and word[0].isupper()
+                and word.isalpha()
+                and len(word) > 2
+            ):
+                entity = word
+                next_index = index + 1
+
+                while (
+                    next_index < len(words)
+                    and words[next_index]
+                    and words[
+                        next_index
+                    ][0].isupper()
+                    and words[
+                        next_index
+                    ].isalpha()
+                ):
+                    entity += (
+                        " "
+                        + words[next_index]
+                    )
+                    next_index += 1
+
+                entities.append(
+                    (entity, "entity")
+                )
+                index = next_index
+
+            else:
+                index += 1
+
         seen = set()
         unique = []
-        for name, etype in entities:
+
+        for name, entity_type in entities:
             if name.lower() not in seen:
                 seen.add(name.lower())
-                unique.append((name, etype))
+                unique.append(
+                    (name, entity_type)
+                )
 
         return unique
