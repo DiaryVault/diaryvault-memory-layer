@@ -34,6 +34,7 @@ from typing import Optional, Literal
 @dataclass
 class RAGChunk:
     """A single chunk ready for embedding and retrieval."""
+
     id: str
     content: str
     tags: list[str]
@@ -48,6 +49,7 @@ class RAGChunk:
 @dataclass
 class KnowledgeNode:
     """A node in a personal knowledge graph."""
+
     id: str
     label: str
     node_type: str  # "memory", "tag", "entity", "date"
@@ -60,6 +62,7 @@ class KnowledgeNode:
 @dataclass
 class KnowledgeEdge:
     """An edge connecting two nodes."""
+
     source: str
     target: str
     relation: str  # "tagged_with", "created_on", "mentions", "related_to"
@@ -72,6 +75,7 @@ class KnowledgeEdge:
 @dataclass
 class KnowledgeGraph:
     """A personal knowledge graph built from vault memories."""
+
     nodes: list[KnowledgeNode] = field(default_factory=list)
     edges: list[KnowledgeEdge] = field(default_factory=list)
 
@@ -90,7 +94,7 @@ class KnowledgeGraph:
             "stats": {
                 "node_count": self.node_count,
                 "edge_count": self.edge_count,
-            }
+            },
         }
 
     def to_json(self, indent: int = 2) -> str:
@@ -154,14 +158,15 @@ class VaultExporter:
                     "tags": memory.metadata.tags,
                     "created_at": memory.created_at,
                     "hash": memory.hash,
+                    "review": self._review_info(memory),
                 }
 
             examples.append(example)
 
         if path:
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 for example in examples:
-                    f.write(json.dumps(example) + '\n')
+                    f.write(json.dumps(example) + "\n")
 
         return examples
 
@@ -190,6 +195,7 @@ class VaultExporter:
                     "source": "diaryvault",
                     "verified": True,
                     "encrypted_at_rest": True,
+                    "review": self._review_info(memory),
                 },
             )
             chunks.append(chunk)
@@ -223,6 +229,7 @@ class VaultExporter:
                     "full_content": memory.content,
                     "hash": memory.hash,
                     "created_at": memory.created_at,
+                    "review": self._review_info(memory),
                 },
             )
             graph.nodes.append(mem_node)
@@ -238,11 +245,13 @@ class VaultExporter:
                     graph.nodes.append(tag_node)
                     tag_nodes[tag] = tag_node
 
-                graph.edges.append(KnowledgeEdge(
-                    source=mem_node.id,
-                    target=f"tag_{tag}",
-                    relation="tagged_with",
-                ))
+                graph.edges.append(
+                    KnowledgeEdge(
+                        source=mem_node.id,
+                        target=f"tag_{tag}",
+                        relation="tagged_with",
+                    )
+                )
 
             # Date node + edge
             date_str = memory.created_at[:10]  # YYYY-MM-DD
@@ -255,11 +264,13 @@ class VaultExporter:
                 graph.nodes.append(date_node)
                 date_nodes[date_str] = date_node
 
-            graph.edges.append(KnowledgeEdge(
-                source=mem_node.id,
-                target=f"date_{date_str}",
-                relation="created_on",
-            ))
+            graph.edges.append(
+                KnowledgeEdge(
+                    source=mem_node.id,
+                    target=f"date_{date_str}",
+                    relation="created_on",
+                )
+            )
 
             # Entity extraction (simple keyword-based)
             if extract_entities:
@@ -268,16 +279,20 @@ class VaultExporter:
                     entity_id = f"entity_{entity_name.lower().replace(' ', '_')}"
                     # Check if entity node already exists
                     if not any(n.id == entity_id for n in graph.nodes):
-                        graph.nodes.append(KnowledgeNode(
-                            id=entity_id,
-                            label=entity_name,
-                            node_type=entity_type,
-                        ))
-                    graph.edges.append(KnowledgeEdge(
-                        source=mem_node.id,
-                        target=entity_id,
-                        relation="mentions",
-                    ))
+                        graph.nodes.append(
+                            KnowledgeNode(
+                                id=entity_id,
+                                label=entity_name,
+                                node_type=entity_type,
+                            )
+                        )
+                    graph.edges.append(
+                        KnowledgeEdge(
+                            source=mem_node.id,
+                            target=entity_id,
+                            relation="mentions",
+                        )
+                    )
 
         return graph
 
@@ -293,15 +308,18 @@ class VaultExporter:
         history = []
 
         for memory in memories:
-            history.append({
-                "role": "user",
-                "content": f"[{memory.created_at[:10]}] [{', '.join(memory.metadata.tags)}] {memory.content}",
-                "metadata": {
-                    "memory_id": memory.id,
-                    "hash": memory.hash,
-                    "verified": True,
+            history.append(
+                {
+                    "role": "user",
+                    "content": f"[{memory.created_at[:10]}] [{', '.join(memory.metadata.tags)}] {memory.content}",
+                    "metadata": {
+                        "memory_id": memory.id,
+                        "hash": memory.hash,
+                        "verified": True,
+                        "review": self._review_info(memory),
+                    },
                 }
-            })
+            )
 
         return history
 
@@ -317,8 +335,11 @@ class VaultExporter:
             total_chars += len(m.content)
             dates.add(m.created_at[:10])
 
+        reviewed = sum(1 for m in memories if self._review_info(m)["reviewed"])
+
         return {
             "total_memories": len(memories),
+            "reviewed_memories": reviewed,
             "unique_tags": sorted(list(all_tags)),
             "total_characters": total_chars,
             "date_range": {
@@ -326,10 +347,61 @@ class VaultExporter:
                 "latest": max(dates) if dates else None,
             },
             "avg_memory_length": total_chars // max(len(memories), 1),
-            "export_formats": ["openai_jsonl", "anthropic_jsonl", "generic_jsonl", "rag_chunks", "knowledge_graph", "conversation_history"],
+            "export_formats": [
+                "openai_jsonl",
+                "anthropic_jsonl",
+                "generic_jsonl",
+                "rag_chunks",
+                "knowledge_graph",
+                "conversation_history",
+            ],
         }
 
     # ── Internal helpers ──────────────────────────
+
+    def _review_info(self, memory) -> dict:
+        """Summarize the review provenance a memory carries, if any.
+
+        Memories finalized from an approved review draft store the full
+        draft record under metadata.custom["review"]. Exports surface a
+        compact summary so downstream consumers can distinguish
+        human confirmed content from unreviewed content.
+        """
+        custom = getattr(memory.metadata, "custom", None) or {}
+        review = custom.get("review")
+
+        if not isinstance(review, dict):
+            return {"reviewed": False}
+
+        suggestions = {
+            item.get("suggestion_id"): item
+            for item in review.get("suggestions", [])
+            if isinstance(item, dict)
+        }
+
+        accepted = [
+            item
+            for item in review.get("decisions", [])
+            if isinstance(item, dict) and item.get("outcome") == "accepted"
+        ]
+
+        confirmed_fields = sorted(
+            {
+                suggestions[item["suggestion_id"]].get("field_name")
+                for item in accepted
+                if item.get("suggestion_id") in suggestions
+            }
+            - {None}
+        )
+
+        return {
+            "reviewed": True,
+            "approved_by": review.get("completed_by"),
+            "approved_at": review.get("completed_at"),
+            "suggestion_count": len(review.get("suggestions", [])),
+            "accepted_count": len(accepted),
+            "confirmed_fields": confirmed_fields,
+        }
 
     def _get_memories(self, tags: Optional[list[str]] = None) -> list:
         """Get memories, optionally filtered by tags."""
@@ -337,8 +409,7 @@ class VaultExporter:
         if tags:
             tag_set = set(tags)
             all_memories = [
-                m for m in all_memories
-                if set(m.metadata.tags).intersection(tag_set)
+                m for m in all_memories if set(m.metadata.tags).intersection(tag_set)
             ]
         all_memories.sort(key=lambda m: m.created_at)
         return all_memories
