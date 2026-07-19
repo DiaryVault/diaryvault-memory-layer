@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "diaryvault-memory"
-version = "0.3.0"
+version = "0.4.0"
 description = "Portable, tamper-evident memory records with selective context sharing and AI-ready exports."
 readme = "README.md"
 license = "MIT"
