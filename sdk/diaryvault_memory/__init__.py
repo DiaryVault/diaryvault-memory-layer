@@ -10,18 +10,10 @@ from .memory import Memory, MemoryStatus
 from .crypto import MemoryCrypto
 from .anchors import AnchorBackend, LocalAnchor
 from .context import ContextRequest, ContextResponse, SharedMemory
-from .review import (
-    ApprovalRecord,
-    DraftRevision,
-    DraftStatus,
-    MemoryDraft,
-    MemorySuggestion,
-    SuggestionStatus,
-)
 from .export import VaultExporter, RAGChunk, KnowledgeGraph, KnowledgeNode, KnowledgeEdge
 
 
-__version__ = "0.4.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "MemoryVault",
@@ -33,12 +25,6 @@ __all__ = [
     "ContextRequest",
     "ContextResponse",
     "SharedMemory",
-    "ApprovalRecord",
-    "DraftRevision",
-    "DraftStatus",
-    "MemoryDraft",
-    "MemorySuggestion",
-    "SuggestionStatus",
     "VaultExporter",
     "RAGChunk",
     "KnowledgeGraph",

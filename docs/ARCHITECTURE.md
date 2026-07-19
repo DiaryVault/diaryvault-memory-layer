@@ -199,7 +199,7 @@ The SDK cannot currently support these claims:
 * An AI generated field was confirmed by a person.
 * A deleted export has been revoked from every recipient.
 
-## v0.4 review workflow
+## Proposed v0.4 review workflow
 
 ```text
 Capture
@@ -286,12 +286,11 @@ Synthetic fixtures should be used for the reference implementation. Production u
 * Conversation history
 * Knowledge graph exports
 
-### v0.4
+### v0.4 proposed
 
-* Persisted draft records
-* Suggestion provenance
-* Acceptance and rejection
-* Confirmed field overrides
-* Explicit approval records
-* Revision history
-* Approval-aware exports
+* Draft records
+* Suggestion records
+* Confirmations
+* Approval records
+* Revisions
+* Provenance

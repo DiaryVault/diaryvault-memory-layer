@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "diaryvault-memory"
-version = "0.4.0"
-description = "Reviewable, tamper-evident memory records with suggestion provenance and approval-aware exports."
+version = "0.3.0"
+description = "Portable, tamper-evident memory records with selective context sharing and AI-ready exports."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
     {name = "DiaryVault", email = "hello@diaryvault.com"},
 ]
-keywords = ["memory", "encryption", "privacy", "provenance", "ai-agents", "rag", "knowledge-graph", "selective-sharing", "approval", "review-workflow"]
+keywords = ["memory", "encryption", "privacy", "provenance", "ai-agents", "rag", "knowledge-graph", "selective-sharing"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

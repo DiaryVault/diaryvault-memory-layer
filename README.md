@@ -14,7 +14,7 @@
 
 ## Status
 
-The current release is **v0.4.0 Alpha**.
+The current release is **v0.3.0 Alpha**.
 
 Available now:
 
@@ -30,11 +30,6 @@ Available now:
 * Conversation history export
 * Personal knowledge graph export
 * Portable `.dvmem` records
-* Reviewable memory drafts
-* AI suggestion provenance
-* Explicit approval and rejection
-* Draft revision history
-* Approval-aware exports
 
 Not implemented:
 
@@ -60,7 +55,7 @@ The principle guiding this project is:
 
 The current SDK provides storage, verification, selective sharing, and export primitives.
 
-Version 0.4 adds explicit drafts, AI suggestions, revisions, and user approval records.
+The next release will add explicit drafts, AI suggestions, revisions, and user approval records.
 
 ## Installation
 
@@ -181,7 +176,6 @@ Supported export surfaces:
 | RAG chunks | Embedding and retrieval pipelines |
 | Conversation history | Assistant context |
 | Knowledge graph | Memory, tag, date, and relationship nodes |
-| Approved manifest | Approval, revision, and suggestion provenance |
 | `.dvmem` | Portable individual memory records |
 
 Exports may contain plaintext personal information. Applications should require explicit user approval before exporting or sharing sensitive memories.
@@ -208,13 +202,23 @@ An HMAC signature demonstrates possession of the same secret key. A local anchor
 * **v0.1**: Local vault, hashing, encryption, signatures, verification, and `.dvmem`
 * **v0.2**: Selective and verified agent context sharing
 * **v0.3**: JSONL, RAG, conversation, and knowledge graph exports
-* **v0.4**: Drafts, suggestions, provenance, approval, rejection, revisions, and approval-aware exports
 
-### Next
+### Next: v0.4 reviewable memories
 
-* Export permission records
-* Revocation records
-* Approved media attachment manifests
+* Draft memory records
+* AI suggestion records
+* Suggested versus confirmed fields
+* Explicit approval
+* Rejection and editing
+* Revision history
+* Suggestion provenance
+* Approval aware exports
+
+### Later
+
+* Approved memory manifests
+* Media attachment manifests
+* Permission and revocation records
 * Read only family sharing
 * Timeline and relationship graph exports
 * A documented bridge to the DiaryVault consumer product
@@ -237,7 +241,7 @@ python -m pytest tests/ -v
 python -m build
 ```
 
-The current suite contains 85 tests.
+The current suite contains 68 tests.
 
 ## Security
 

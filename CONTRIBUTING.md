@@ -2,7 +2,7 @@
 
 Thank you for contributing.
 
-The project is focused on portable, user controlled memory records, reviewable suggestions, explicit approval, and provenance.
+The project is currently focused on portable, user controlled memory records and a review first workflow for AI suggested memories.
 
 ## Setup
 
@@ -26,7 +26,7 @@ python -m pytest tests/ -v
 python -m build
 ```
 
-The current suite contains 85 tests.
+The current suite contains 68 tests.
 
 ## Current priorities
 
