@@ -11,6 +11,13 @@ from .crypto import MemoryCrypto
 from .anchors import AnchorBackend, LocalAnchor
 from .context import ContextRequest, ContextResponse, SharedMemory
 from .export import VaultExporter, RAGChunk, KnowledgeGraph, KnowledgeNode, KnowledgeEdge
+from .review import (
+    DecisionOutcome,
+    ReviewDecision,
+    ReviewDraft,
+    ReviewState,
+    Suggestion,
+)
 
 
 __version__ = "0.3.0"
@@ -30,4 +37,9 @@ __all__ = [
     "KnowledgeGraph",
     "KnowledgeNode",
     "KnowledgeEdge",
+    "DecisionOutcome",
+    "ReviewDecision",
+    "ReviewDraft",
+    "ReviewState",
+    "Suggestion",
 ]

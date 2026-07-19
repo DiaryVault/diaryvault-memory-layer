@@ -199,13 +199,12 @@ The SDK cannot currently support these claims:
 * An AI generated field was confirmed by a person.
 * A deleted export has been revoked from every recipient.
 
-## Proposed v0.4 review workflow
+## v0.4 review workflow
+
+The review domain model is implemented in `sdk/diaryvault_memory/review.py` as pure, deeply immutable value objects. It does not persist drafts, modify `MemoryVault`, or create final `Memory` objects yet.
 
 ```text
-Capture
-    |
-    v
-MemoryDraft
+ReviewDraft (implemented)
     |
     +-- Original user supplied fields
     |
@@ -217,19 +216,16 @@ MemoryDraft
     |     +-- Confidence when available
     |
     v
-User review
+ReviewDecision records (implemented)
     |
-    +-- Approve
-    +-- Edit
+    +-- Accept, optionally with an edited value
     +-- Reject
     |
     v
-ConfirmedMemory
+Approved or rejected ReviewDraft (implemented)
     |
-    +-- Confirmed fields
-    +-- Approval record
-    +-- Revision history
-    +-- Integrity hash
+    v
+Persistence and final memory creation (planned)
 ```
 
 Core rules:
@@ -237,9 +233,9 @@ Core rules:
 1. Suggested values are never represented as confirmed values.
 2. Confirmation requires an explicit user action.
 3. Edits preserve suggestion provenance.
-4. Exports distinguish source content, suggestions, and confirmed content.
-5. Revisions create new verification material rather than silently rewriting history.
-6. Deletion and revocation are separate from integrity verification.
+4. One value per field can be accepted, and every suggestion must be reviewed before approval.
+5. Invalid review states are rejected at construction, including during deserialization.
+6. Persistence, revision history, approval aware exports, and final memory creation are planned and are not part of this model yet.
 
 ## Relationship to the DiaryVault product
 
@@ -286,11 +282,18 @@ Synthetic fixtures should be used for the reference implementation. Production u
 * Conversation history
 * Knowledge graph exports
 
-### v0.4 proposed
+### v0.4 in progress
+
+Implemented:
 
 * Draft records
-* Suggestion records
-* Confirmations
-* Approval records
-* Revisions
-* Provenance
+* Suggestion records with provenance
+* Explicit decision and approval records
+* Validated serialization
+
+Planned:
+
+* Persistence
+* Final memory creation
+* Revision history
+* Approval aware exports
