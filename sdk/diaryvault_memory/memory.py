@@ -1,7 +1,7 @@
 """
 Memory data model — the fundamental unit of the Memory Layer.
 
-A Memory is an immutable, cryptographically verified record of a moment in time.
+A Memory is a portable, tamper-evident record of a moment in time.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ class MemoryAnchor:
 @dataclass
 class Memory:
     """
-    An immutable memory record.
+    A tamper-evident memory record.
 
     Once created, the content and hash form a cryptographic bond.
     Any modification to content invalidates the hash, making tampering detectable.

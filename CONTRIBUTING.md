@@ -1,71 +1,81 @@
 # Contributing to DiaryVault Memory Layer
 
-Thanks for your interest in contributing! This project is open to everyone.
+Thank you for contributing.
 
-## Quick Start
+The project is currently focused on portable, user controlled memory records and a review first workflow for AI suggested memories.
+
+## Setup
 
 ```bash
-# Fork and clone the repo
-git clone https://github.com/YOUR_USERNAME/diaryvault-memory-layer.git
+git clone https://github.com/DiaryVault/diaryvault-memory-layer.git
 cd diaryvault-memory-layer
 
-# Install dev dependencies
-pip install cryptography pytest pytest-cov
+python3 -m venv .venv
+source .venv/bin/activate
 
-# Run the tests
-python -m pytest tests/ -v
-
-# All 28 tests should pass before you submit a PR
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+python -m pip install build ruff
 ```
 
-## How to Contribute
-
-**Found a bug?** Open an issue with steps to reproduce it.
-
-**Have an idea?** Open an issue to discuss before building. This saves everyone time.
-
-**Want to code?** Fork → branch → code → test → PR. Keep PRs focused on one thing.
-
-## Priority Areas
-
-We'd especially love help with:
-
-- **Storage backends** — IPFS, Filecoin, Ceramic adapters
-- **AI agent plugins** — new capture agents for different data sources
-- **Language SDKs** — TypeScript, Rust, Go ports
-- **Security audits** — review the crypto implementation
-- **Documentation** — tutorials, examples, guides
-- **Mobile** — iOS/Android integration patterns
-
-## Code Style
-
-- Python 3.10+
-- Type hints on all public methods
-- Docstrings on all public classes and methods
-- Tests for all new functionality
-- Keep dependencies minimal
-
-## Running Tests
+## Required checks
 
 ```bash
-# Full test suite
+python -m ruff check sdk tests examples
 python -m pytest tests/ -v
-
-# With coverage
-python -m pytest tests/ -v --cov=sdk/diaryvault_memory --cov-report=term-missing
+python -m build
 ```
 
-## Commit Messages
+The current suite contains 68 tests.
 
-Keep them short and clear:
-- `Add IPFS anchor backend`
-- `Fix Merkle proof verification for odd-length lists`
-- `Update README with new examples`
+## Current priorities
 
-## Code of Conduct
+Contributions are especially useful in these areas:
 
-Be kind. Be constructive. We're all here to build something meaningful.
+* Draft, suggestion, approval, and revision schemas
+* Provenance for AI suggested fields
+* Portable approved memory manifests
+* Permission and revocation semantics
+* Export safety and privacy controls
+* Security review
+* Documentation and runnable examples
+* Compatibility for existing `.dvmem` records
 
-## Questions?
+The following areas are not current priorities:
 
-Open an issue or find us on [Discord](https://discord.gg/diaryvault).
+* Blockchain backends
+* Health record integrations
+* Dead man switches
+* Autonomous capture agents
+* Additional language SDKs
+* Generalized identity protocols
+
+## Pull requests
+
+Keep each pull request focused.
+
+New behavior should include:
+
+* Type hints
+* Public docstrings
+* Tests
+* Backward compatibility notes
+* Privacy and trust boundary notes where relevant
+
+Before opening a pull request:
+
+```bash
+python -m ruff check sdk tests examples
+python -m pytest tests/ -v
+git diff --check
+```
+
+## Security issues
+
+Do not open a public issue containing private memory data, encryption keys, or a working exploit.
+
+Use synthetic fixtures in tests and examples.
+
+## Conduct
+
+Be constructive, specific, and respectful.

@@ -1,7 +1,7 @@
 """
 Cryptographic operations for the Memory Layer.
 
-All encryption happens client-side. Your keys never leave your device.
+Encryption happens in the caller's process. The SDK does not transmit keys.
 
 Supported operations:
 - SHA-256 content hashing

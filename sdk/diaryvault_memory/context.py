@@ -1,23 +1,11 @@
 """
-Agent Context Layer — Selective, verified memory sharing for AI agents.
+Selective memory sharing for agents and applications.
 
-This is the bridge between user-owned memory and AI agents.
-Users control what gets shared. Agents get cryptographic proof
-that the context they received is authentic and unmodified.
+A requester declares a scope and purpose. The vault owner applies
+allowed and denied tags before records are disclosed.
 
-Usage:
-    # Agent side: request context
-    request = ContextRequest(
-        agent_id="openclaw-agent-001",
-        scope=["preference", "work"],
-        purpose="Personalize meeting scheduling",
-    )
-
-    # User side: selectively share
-    response = vault.share(request, allowed_tags=["preference", "work"])
-
-    # Agent side: verify what they received
-    assert response.verify_all()  # Every memory is hash-verified
+Shared records include hashes and verification metadata so recipients
+can detect changes when they possess the required verification secret.
 """
 
 from __future__ import annotations

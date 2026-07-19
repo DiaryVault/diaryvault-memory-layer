@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "diaryvault-memory"
 version = "0.3.0"
-description = "An open-source memory layer for humans. Cryptographically verified, encrypted, permanent memory records."
+description = "Portable, tamper-evident memory records with selective context sharing and AI-ready exports."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
     {name = "DiaryVault", email = "hello@diaryvault.com"},
 ]
-keywords = ["memory", "encryption", "journal", "blockchain", "privacy", "diary", "ai-agents"]
+keywords = ["memory", "encryption", "privacy", "provenance", "ai-agents", "rag", "knowledge-graph", "selective-sharing"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -33,18 +33,12 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
 ]
-arweave = [
-    "arweave-python-client>=1.0.0",
-]
-ethereum = [
-    "web3>=6.0.0",
-]
 
 [project.urls]
 Homepage = "https://diaryvault.com"
-Documentation = "https://github.com/diaryvault/memory-layer/docs"
-Repository = "https://github.com/diaryvault/memory-layer"
-Issues = "https://github.com/diaryvault/memory-layer/issues"
+Documentation = "https://github.com/DiaryVault/diaryvault-memory-layer/tree/main/docs"
+Repository = "https://github.com/DiaryVault/diaryvault-memory-layer"
+Issues = "https://github.com/DiaryVault/diaryvault-memory-layer/issues"
 
 [tool.setuptools.packages.find]
 where = ["sdk"]

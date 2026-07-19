@@ -72,7 +72,7 @@ class MemoryVault:
         auto_anchor: bool = False,
     ) -> Memory:
         """
-        Create a new immutable memory.
+        Create a new tamper-evident memory.
 
         This is the primary method. It:
         1. Creates a Memory record

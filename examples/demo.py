@@ -57,7 +57,7 @@ def main():
     section("Install")
     cmd("pip install diaryvault-memory")
     pause(0.3)
-    print("\033[0;90m  Successfully installed diaryvault-memory-0.1.0\033[0m")
+    print("\033[0;90m  Successfully installed diaryvault-memory-0.3.0\033[0m")
     pause(0.8)
 
     # Create vault
@@ -72,7 +72,7 @@ def main():
     pause(0.8)
 
     # Create memory
-    section("Create an immutable memory")
+    section("Create a tamper-evident memory")
     slow_print("\033[0;37m>>> memory = vault.create(\033[0m", 0.03)
     slow_print("\033[0;37m...     content=\"Today I decided to start a company.\",\033[0m", 0.03)
     slow_print("\033[0;37m...     tags=[\"career\", \"milestone\"]\033[0m", 0.03)
@@ -108,7 +108,7 @@ def main():
     pause(1)
 
     # Anchor
-    section("Anchor to permanent storage")
+    section("Create a local proof record")
     slow_print("\033[0;37m>>> vault.anchor(memory, backend=\"local\")\033[0m", 0.03)
     pause(0.5)
     success("Hash anchored to local storage")
@@ -128,7 +128,7 @@ def main():
     print()
     print()
     print(f"\033[1;33m{'─' * 50}\033[0m")
-    slow_print("\033[1;36m  Own your life story forever.\033[0m", 0.04)
+    slow_print("\033[1;36m  Keep your memory records portable and verifiable.\033[0m", 0.04)
     print()
     info("pip install diaryvault-memory")
     info("github.com/DiaryVault/diaryvault-memory-layer")

@@ -1,227 +1,256 @@
-# 🧠 DiaryVault Memory Layer
+<p align="center">
+  <img src="assets/diaryvault-logo.png" alt="DiaryVault" width="88">
+</p>
 
-**Give agents context without giving up your data.**
+<h1 align="center">DiaryVault Memory Layer</h1>
 
-An open-source, cryptographically verified memory layer that lets AI agents access user context — with selective sharing, hash verification, and full user control.
+<p align="center">
+  An open source Python SDK for portable, tamper evident personal memory records.
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![CI](https://img.shields.io/badge/CI-passing-brightgreen)]() [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)]() [![PyPI](https://img.shields.io/pypi/v/diaryvault-memory)]() [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)]()
+<p align="center">
+  Store memories locally, share only selected context, and export selected records into open formats for retrieval and personal AI systems.
+</p>
 
----
+## Status
 
-## The Problem
+The current release is **v0.3.0 Alpha**.
 
-AI agents are everywhere. They schedule your meetings, manage your tasks, and make decisions on your behalf. But they all face the same problem: **they don't know anything about you.**
+Available now:
 
-Right now:
-- **Agents** own execution and behavior
-- **Platforms** own memory (logs, embeddings, context)
-- **Users** own nothing durable or portable
+* Local encrypted memory storage
+* SHA 256 content hashing
+* AES 256 GCM encryption
+* HMAC SHA 256 signatures
+* Tamper detection
+* Local proof records
+* Selective context sharing
+* JSONL dataset export
+* RAG ready chunks
+* Conversation history export
+* Personal knowledge graph export
+* Portable `.dvmem` records
 
-Every platform stores its own version of "you" — and you can't verify it, control it, move it, or prove it hasn't been tampered with.
+Not implemented:
 
-**There is no canonical user-owned memory layer. Until now.**
+* Arweave anchoring
+* Ethereum anchoring
+* IPFS storage
+* AI synthesis or model calls
+* Mobile SDKs
+* Cloud synchronization
+* Direct production app integration
 
----
+`LocalAnchor` is the only supported anchor backend. The Arweave and Ethereum classes are currently placeholders.
 
-## Quick Start
+## Why this exists
+
+AI systems increasingly use personal history as context.
+
+That creates a trust problem. A model may infer details, summarize events, or propose meaning. Those suggestions should not silently become part of a person’s permanent memory record.
+
+The principle guiding this project is:
+
+> AI may suggest. People confirm.
+
+The current SDK provides storage, verification, selective sharing, and export primitives.
+
+The next release will add explicit drafts, AI suggestions, revisions, and user approval records.
+
+## Installation
 
 ```bash
 pip install diaryvault-memory
 ```
 
-### Create your vault
+For development:
+
+```bash
+git clone https://github.com/DiaryVault/diaryvault-memory-layer.git
+cd diaryvault-memory-layer
+
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+## Create and verify a memory
 
 ```python
 from diaryvault_memory import MemoryVault
 
-vault = MemoryVault(encryption_key="your-secret-key")
-
-vault.create(content="I'm allergic to shellfish", tags=["health"])
-vault.create(content="I work at a fintech startup in Seoul", tags=["work"])
-vault.create(content="I prefer morning meetings before 10am", tags=["preference"])
-vault.create(content="My salary is 150k", tags=["financial", "private"])
-```
-
-Every memory is SHA-256 hashed, AES-256 encrypted, HMAC signed, and timestamped.
-
-### Share context with an agent — selectively
-
-```python
-from diaryvault_memory import ContextRequest
-
-# Agent requests context
-request = ContextRequest(
-    agent_id="scheduling-agent-001",
-    scope=["preference", "work"],
-    purpose="Personalize meeting scheduling",
+vault = MemoryVault(
+    encryption_key="replace-with-a-private-secret",
+    storage_dir="./memory-data",
 )
 
-# User controls what gets shared (health and financial data blocked)
-response = vault.share(request, denied_tags=["health", "financial", "private"])
+memory = vault.create(
+    content="She laughed when the dog sneezed.",
+    tags=["family", "milestone"],
+)
 
-print(response.memory_count)    # 2 (only preference + work)
-print(response.scope_granted)   # ['preference', 'work']
-print(response.scope_denied)    # []
-print(response.verify_all())    # True — every memory is hash-verified
+assert vault.verify(memory)
 
-# Agent gets verified context:
-for mem in response.shared_memories:
-    print(f"  [{', '.join(mem.tags)}] {mem.content} (verified={mem.verified})")
-    # [preference] I prefer morning meetings before 10am (verified=True)
-    # [work] I work at a fintech startup in Seoul (verified=True)
-
-# Agent CANNOT see: health data, salary, anything you didn't approve
+print(memory.id)
+print(memory.hash)
 ```
 
-The agent gets cryptographic proof that the context is authentic and unmodified. The user keeps full control of what gets shared.
+A `Memory` object is mutable in Python. The stored hash and signature make later changes detectable.
 
----
+```python
+memory.content = "Changed content"
 
-## Why This Matters
+assert not vault.verify(memory)
+```
 
-| Today | With DiaryVault Memory Layer |
+## Share selected context
+
+Agents request a declared scope. The vault owner controls what is actually shared.
+
+```python
+from diaryvault_memory import ContextRequest, MemoryVault
+
+vault = MemoryVault(
+    encryption_key="replace-with-a-private-secret",
+    storage_dir="./memory-data",
+)
+
+request = ContextRequest(
+    agent_id="family-story-agent",
+    scope=["family", "milestone"],
+    purpose="Prepare a private family recap",
+    max_memories=5,
+)
+
+response = vault.share(
+    request,
+    allowed_tags=["milestone"],
+    denied_tags=["private"],
+)
+
+assert response.verify_all()
+
+for shared_memory in response.shared_memories:
+    print(shared_memory.content)
+```
+
+A context response records:
+
+* The requesting agent
+* The declared purpose
+* Requested, granted, and denied scopes
+* Shared memory hashes
+* Verification state
+* The vault Merkle root
+
+## Export for personal AI systems
+
+```python
+from diaryvault_memory import MemoryVault, VaultExporter
+
+vault = MemoryVault(
+    encryption_key="replace-with-a-private-secret",
+    storage_dir="./memory-data",
+)
+
+exporter = VaultExporter(vault)
+
+chunks = exporter.to_rag_chunks(tags=["family"])
+graph = exporter.to_knowledge_graph(tags=["family"])
+history = exporter.to_conversation_history(tags=["family"])
+
+exporter.to_jsonl(
+    "family-memories.jsonl",
+    format="openai",
+    tags=["family"],
+)
+```
+
+Supported export surfaces:
+
+| Export | Purpose |
 |---|---|
-| Each platform stores its own version of you | You own one canonical memory vault |
-| You can't verify what agents "remember" about you | Every memory is SHA-256 hashed and verifiable |
-| Context is siloed and non-portable | Open `.dvmem` format — export and move freely |
-| Platforms can modify your data without your knowledge | HMAC signatures detect any tampering |
-| Agents get everything or nothing | Selective sharing by tags — you choose what to share |
-| No proof of when data was created | RFC 3339 timestamps with optional blockchain anchoring |
+| JSONL | Portable datasets and fine tuning inputs |
+| RAG chunks | Embedding and retrieval pipelines |
+| Conversation history | Assistant context |
+| Knowledge graph | Memory, tag, date, and relationship nodes |
+| `.dvmem` | Portable individual memory records |
 
----
+Exports may contain plaintext personal information. Applications should require explicit user approval before exporting or sharing sensitive memories.
 
-## How It Works
+## Cryptographic model
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    USER'S VAULT                          │
-│  preferences · health · work · financial · personal     │
-│  All encrypted. All hashed. All signed.                 │
-└─────────────────┬───────────────────────────────────────┘
-                  │
-          Agent requests context
-          (scope + purpose)
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────┐
-│              SELECTIVE SHARING                            │
-│  User (or policy) decides what tags to share             │
-│  Denied tags are never exposed                           │
-│  Each shared memory includes hash + signature            │
-└─────────────────┬───────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────┐
-│              VERIFIED CONTEXT                             │
-│  Agent receives: content + hash + signature              │
-│  Agent can verify: integrity, authenticity               │
-│  Agent cannot: access other memories, forge proofs       │
-│  Vault merkle root included for full integrity check     │
-└─────────────────────────────────────────────────────────┘
-```
+The SDK uses:
 
----
+* SHA 256 for content fingerprints
+* AES 256 GCM for local encryption
+* HMAC SHA 256 for integrity signatures
+* Merkle roots for batch verification
 
-## Core Features
+These primitives provide encrypted local storage and tamper detection.
 
-**🔐 AES-256-GCM Encryption** — Every memory encrypted client-side. Your key never leaves your device.
+They do not independently prove legal authorship, independently trusted timestamps, public blockchain existence, or user approval of AI generated claims.
 
-**🔗 SHA-256 + HMAC Verification** — Content hashing and signing. Tamper with one byte and verification fails.
-
-**🤖 Agent Context Layer** — `ContextRequest` / `ContextResponse` protocol for agents to request and receive verified user context.
-
-**🏷️ Selective Sharing** — Share by tags. Block by tags. Users decide what agents can see, per request.
-
-**🌳 Merkle Tree Integrity** — Compute a single hash for your entire vault. Prove nothing has been added, removed, or modified.
-
-**📦 Open `.dvmem` Format** — Documented JSON format. No vendor lock-in. Export and import freely.
-
-**🌐 Blockchain Anchoring** — Optionally anchor hashes to Arweave or Ethereum L2 for permanent, third-party-verifiable proof.
-
-**🏠 Self-Hostable** — Runs entirely on your hardware. No cloud. No accounts. No trust required.
-
----
-
-## Use Cases
-
-| Use Case | Description |
-|---|---|
-| **Agent Personalization** | Give agents verified context without giving up your data |
-| **Portable Identity** | One vault, many agents — your context moves with you |
-| **Data Sovereignty** | Prove what you shared, when, and with whom |
-| **AI Twin Training** | Structured, verified life data for training your personal AI |
-| **Digital Legacy** | Preserve your life story with cryptographic permanence |
-| **Legal Evidence** | Timestamped, tamper-proof personal records |
-| **Health Timeline** | Verifiable medical history and symptom tracking |
-
----
-
-## Architecture
-
-Built on four principles:
-
-1. **Privacy First** — Encryption happens client-side before anything leaves your device
-2. **Verify Everything** — Every operation produces a cryptographic proof
-3. **Own Your Data** — Open formats, open code, export anytime
-4. **Permanence Optional** — Choose your storage backend: local, cloud, or blockchain
-
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full technical deep dive, threat model, and `.dvmem` format specification.
-
----
-
-## The Bigger Picture
-
-DiaryVault Memory Layer is one half of a trust equation for the agent era:
-
-- **Agent trust** — Can I trust what this agent did? → [authe.me](https://authe.me)
-- **Data trust** — Can I trust the data the agent is using about me? → DiaryVault Memory Layer
-
-**Trust = Agent behavior + Data integrity.**
-
----
+An HMAC signature demonstrates possession of the same secret key. A local anchor proves only what is present in the local proof store.
 
 ## Roadmap
 
-- [x] v0.1 — Core SDK: hash, encrypt, verify, store, `.dvmem` format
-- [x] v0.2 — Agent Context Layer: selective, verified sharing
-- [ ] v0.3 — Personal AI Export: fine-tuning datasets, RAG embeddings, knowledge graphs
-- [ ] v0.4 — Blockchain Anchoring: Arweave + Ethereum L2 (Base)
-- [ ] v0.5 — AI Synthesis Agents: calendar capture, daily summary, photo description
-- [ ] v0.6 — Rich Capture: photo, voice, health data agents
-- [ ] v0.7 — Dead Man's Switch: inactivity threshold, beneficiary access
-- [ ] v0.8 — Mobile SDK (iOS/Android)
-- [ ] v1.0 — DiaryVault app integration
+### Completed
 
----
+* **v0.1**: Local vault, hashing, encryption, signatures, verification, and `.dvmem`
+* **v0.2**: Selective and verified agent context sharing
+* **v0.3**: JSONL, RAG, conversation, and knowledge graph exports
 
-## Contributing
+### Next: v0.4 reviewable memories
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+* Draft memory records
+* AI suggestion records
+* Suggested versus confirmed fields
+* Explicit approval
+* Rejection and editing
+* Revision history
+* Suggestion provenance
+* Approval aware exports
 
-Priority areas:
-- Agent framework integrations (OpenClaw, LangChain, CrewAI)
-- Storage backend adapters (IPFS, Filecoin, Ceramic)
-- Language SDKs (TypeScript, Rust, Go)
-- Documentation and tutorials
+### Later
 
----
+* Approved memory manifests
+* Media attachment manifests
+* Permission and revocation records
+* Read only family sharing
+* Timeline and relationship graph exports
+* A documented bridge to the DiaryVault consumer product
 
-## Philosophy
+Blockchain anchoring, generalized capture agents, health records, dead man switches, and additional language SDKs are not current priorities.
 
-> "The palest ink is better than the best memory." — Chinese Proverb
+## Relationship to DiaryVault
 
-Your memories belong to you. Not to a platform. Not to a corporation. Not to an algorithm.
+This repository explores the open trust and portability primitives behind DiaryVault’s product philosophy.
 
-The Memory Layer is infrastructure for a future where every human has a verified, portable, private record of their existence — and every agent they interact with can be given exactly the context they need, nothing more.
+It is currently a standalone Python SDK. It is not yet the storage implementation used by the production DiaryVault iOS and Android applications.
 
-**This is not a product. It's a protocol. Build on it.**
+The consumer product is available at [diaryvault.com](https://diaryvault.com).
 
----
+## Development
+
+```bash
+python -m ruff check sdk tests examples
+python -m pytest tests/ -v
+python -m build
+```
+
+The current suite contains 68 tests.
+
+## Security
+
+This project is Alpha software and has not received an independent security audit.
+
+Do not use it as the sole system for legal evidence, medical records, regulated records, or irreplaceable archival storage.
+
+Never commit encryption keys or private memory exports to source control.
 
 ## License
 
-MIT — Use it. Fork it. Build on it.
-
-**Own your data. Share it on your terms.**
-
-[diaryvault.com](https://diaryvault.com) · [@diaryvault](https://twitter.com/diaryvaultinc)
+MIT

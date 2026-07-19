@@ -1,97 +1,142 @@
 """
-DiaryVault Memory Layer — Quick Example
+DiaryVault Memory Layer v0.3 example.
 
-Run this script to see the Memory Layer in action:
+Demonstrates:
 
-    pip install diaryvault-memory
-    python example.py
+* Local encrypted memory creation
+* Tamper detection
+* Selective context sharing
+* RAG and knowledge graph exports
 """
 
-from diaryvault_memory import MemoryVault
+from tempfile import TemporaryDirectory
 
-# ── Create a vault ───────────────────────────────────────────────
-vault = MemoryVault(encryption_key="my-secret-key-change-this")
+from diaryvault_memory import (
+    ContextRequest,
+    MemoryVault,
+    VaultExporter,
+)
 
-print("🧠 DiaryVault Memory Layer — Demo\n")
 
-# ── Create some memories ─────────────────────────────────────────
-memories = [
-    {
-        "content": "Started learning Python today. Wrote my first 'Hello World'. Feels like a superpower.",
-        "tags": ["coding", "milestone"],
-    },
-    {
-        "content": "Had the best conversation with Dad about his childhood. He grew up without electricity. I never want to forget these stories.",
-        "tags": ["family", "important"],
-    },
-    {
-        "content": "Decided to quit my job and start a company. Terrified but excited. Revenue target: $10k/month by December.",
-        "tags": ["career", "milestone", "goals"],
-    },
-]
+def main() -> None:
+    with TemporaryDirectory(
+        prefix="diaryvault-memory-example-",
+    ) as storage_dir:
+        vault = MemoryVault(
+            encryption_key="synthetic-example-key",
+            storage_dir=storage_dir,
+        )
 
-print("Creating memories...\n")
-created = []
-for entry in memories:
-    memory = vault.create(content=entry["content"], tags=entry["tags"])
-    created.append(memory)
-    print(f"  ✓ Memory {memory.id[:8]}...")
-    print(f"    Hash:      {memory.hash[:24]}...")
-    print(f"    Encrypted: {len(memory.encrypted_content)} bytes")
-    print(f"    Signed:    {memory.signature[:24]}...")
-    print(f"    Tags:      {', '.join(memory.metadata.tags)}")
-    print()
+        memories = [
+            vault.create(
+                content=(
+                    "Mina laughed for the first time "
+                    "when the dog sneezed."
+                ),
+                tags=["family", "milestone"],
+            ),
+            vault.create(
+                content=(
+                    "We took our first walk together "
+                    "under the cherry trees."
+                ),
+                tags=["family", "outside"],
+            ),
+            vault.create(
+                content=(
+                    "Private note for the parents about "
+                    "the first difficult night."
+                ),
+                tags=["family", "private"],
+            ),
+        ]
 
-# ── Verify integrity ─────────────────────────────────────────────
-print("Verifying all memories...")
-result = vault.batch_verify()
-print(f"  ✓ {result['valid']}/{result['total']} memories verified\n")
+        print("DiaryVault Memory Layer v0.3")
+        print()
 
-# ── Demonstrate tamper detection ─────────────────────────────────
-print("Tampering with a memory...")
-tampered = created[0]
-original_content = tampered.content
-tampered.content = "I NEVER SAID THIS"
-is_valid = vault.verify(tampered)
-print(f"  ✗ Tampered memory valid? {is_valid}")
-tampered.content = original_content  # restore
-print(f"  ✓ Original memory valid? {vault.verify(tampered)}\n")
+        print("Created memories:")
 
-# ── Search memories ──────────────────────────────────────────────
-print("Searching for 'company'...")
-results = vault.search("company")
-print(f"  Found {len(results)} result(s):")
-for r in results:
-    print(f"    → {r.content[:60]}...\n")
+        for memory in memories:
+            tags = ", ".join(memory.metadata.tags)
 
-# ── Decrypt a memory ─────────────────────────────────────────────
-print("Decrypting memory...")
-decrypted = vault.decrypt(created[1])
-print(f"  ✓ {decrypted[:60]}...\n")
+            print(
+                f"  {memory.id[:8]} "
+                f"verified={vault.verify(memory)} "
+                f"tags={tags}"
+            )
 
-# ── Anchor to local storage ──────────────────────────────────────
-print("Anchoring to local storage...")
-vault.anchor(created[2], backend="local")
-print(f"  ✓ Anchored: {created[2].anchors[0].backend}")
-print(f"    Tx ID:    {created[2].anchors[0].transaction_id[:24]}...\n")
+        original_content = memories[0].content
+        memories[0].content = "Changed after creation"
 
-# ── Merkle root ──────────────────────────────────────────────────
-root = vault.compute_merkle_root()
-print(f"Vault Merkle root: {root[:32]}...")
-print(f"  (This single hash verifies all {len(vault)} memories)\n")
+        print()
+        print("Tamper detection:")
+        print(
+            "  Modified record verified:",
+            vault.verify(memories[0]),
+        )
 
-# ── Export ────────────────────────────────────────────────────────
-print("Exporting memory to .dvmem format...")
-path = vault.export_memory(created[2], "/tmp/my-memory.dvmem")
-print(f"  ✓ Saved to {path}\n")
+        memories[0].content = original_content
 
-# ── Stats ────────────────────────────────────────────────────────
-stats = vault.stats
-print("Vault stats:")
-print(f"  Total memories: {stats['total_memories']}")
-print(f"  Encrypted:      {stats['encrypted']}")
-print(f"  Anchored:       {stats['anchored']}")
-print(f"  Tags:           {', '.join(stats['tags'])}")
+        print(
+            "  Restored record verified:",
+            vault.verify(memories[0]),
+        )
 
-print("\n✨ Done! Your memories are hashed, encrypted, signed, and verified.")
-print("   Learn more: https://memory.diaryvault.com")
+        request = ContextRequest(
+            agent_id="private-family-recap",
+            scope=["family", "milestone"],
+            purpose="Prepare a reviewable family recap",
+            max_memories=10,
+        )
+
+        response = vault.share(
+            request,
+            allowed_tags=["milestone"],
+            denied_tags=["private"],
+        )
+
+        print()
+        print("Selective context sharing:")
+        print(
+            "  Shared memories:",
+            len(response.shared_memories),
+        )
+        print(
+            "  Response verified:",
+            response.verify_all(),
+        )
+
+        exporter = VaultExporter(vault)
+
+        rag_chunks = exporter.to_rag_chunks(
+            tags=["family"],
+            include_hash=True,
+        )
+
+        graph = exporter.to_knowledge_graph(
+            tags=["family"],
+        )
+
+        graph_data = graph.to_dict()
+
+        print()
+        print("AI ready exports:")
+        print("  RAG chunks:", len(rag_chunks))
+        print(
+            "  Graph nodes:",
+            len(graph_data.get("nodes", [])),
+        )
+        print(
+            "  Graph edges:",
+            len(graph_data.get("edges", [])),
+        )
+
+        print()
+        print(
+            "Drafts, suggestions, and explicit approvals "
+            "are planned for v0.4."
+        )
+
+
+if __name__ == "__main__":
+    main()

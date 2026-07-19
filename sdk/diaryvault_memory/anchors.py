@@ -6,9 +6,9 @@ proving that a memory existed at a specific point in time.
 
 Backends:
 - LocalAnchor: File-based anchoring (default, no dependencies)
-- ArweaveAnchor: Permanent storage on Arweave (coming soon)
-- EthereumAnchor: L2 hash anchoring on Base/Arbitrum (coming soon)
-- IPFSAnchor: Content-addressed storage on IPFS (coming soon)
+- ArweaveAnchor: Unsupported placeholder
+- EthereumAnchor: Unsupported placeholder
+- IPFSAnchor: Not implemented
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ class AnchorBackend(ABC):
     @abstractmethod
     def anchor(self, memory_id: str, content_hash: str, signature: str) -> MemoryAnchor:
         """
-        Anchor a memory hash to the permanence layer.
+        Record a memory hash with this backend.
 
         Args:
             memory_id: Unique memory identifier.
@@ -50,7 +50,7 @@ class AnchorBackend(ABC):
     @abstractmethod
     def verify(self, memory_id: str, content_hash: str) -> bool:
         """
-        Verify that a memory hash exists in the permanence layer.
+        Verify that a memory hash matches the backend record.
 
         Args:
             memory_id: Unique memory identifier.
@@ -163,14 +163,9 @@ class LocalAnchor(AnchorBackend):
 
 
 class ArweaveAnchor(AnchorBackend):
-    """
-    Arweave permanent storage backend.
+    """Unsupported placeholder for a possible Arweave backend.
 
-    Stores data permanently on the Arweave blockweave.
-    Cost: ~$0.005 per KB (one-time, stored forever).
-
-    Requires: arweave-python-client
-    Status: Coming in v0.3
+    No network, storage, retrieval, or verification operations are implemented.
     """
 
     @property
@@ -179,27 +174,21 @@ class ArweaveAnchor(AnchorBackend):
 
     def anchor(self, memory_id: str, content_hash: str, signature: str) -> MemoryAnchor:
         raise NotImplementedError(
-            "Arweave anchoring coming in v0.3. "
+            "Arweave anchoring is not implemented. "
             "Track progress: https://github.com/diaryvault/memory-layer/issues"
         )
 
     def verify(self, memory_id: str, content_hash: str) -> bool:
-        raise NotImplementedError("Arweave verification coming in v0.3")
+        raise NotImplementedError("Arweave verification is not implemented")
 
     def retrieve(self, memory_id: str) -> Optional[dict]:
-        raise NotImplementedError("Arweave retrieval coming in v0.3")
+        raise NotImplementedError("Arweave retrieval is not implemented")
 
 
 class EthereumAnchor(AnchorBackend):
-    """
-    Ethereum L2 hash anchoring backend.
+    """Unsupported placeholder for a possible Ethereum backend.
 
-    Anchors memory hashes to an Ethereum L2 (Base, Arbitrum, Optimism).
-    Only the hash goes on-chain — content stays encrypted off-chain.
-    Cost: ~$0.01 per anchor on L2.
-
-    Requires: web3.py
-    Status: Coming in v0.3
+    No network, contract, storage, retrieval, or verification operations are implemented.
     """
 
     @property
@@ -208,12 +197,12 @@ class EthereumAnchor(AnchorBackend):
 
     def anchor(self, memory_id: str, content_hash: str, signature: str) -> MemoryAnchor:
         raise NotImplementedError(
-            "Ethereum L2 anchoring coming in v0.3. "
+            "Ethereum L2 anchoring is not implemented. "
             "Track progress: https://github.com/diaryvault/memory-layer/issues"
         )
 
     def verify(self, memory_id: str, content_hash: str) -> bool:
-        raise NotImplementedError("Ethereum verification coming in v0.3")
+        raise NotImplementedError("Ethereum verification is not implemented")
 
     def retrieve(self, memory_id: str) -> Optional[dict]:
-        raise NotImplementedError("Ethereum retrieval coming in v0.3")
+        raise NotImplementedError("Ethereum retrieval is not implemented")

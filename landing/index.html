@@ -2,733 +2,767 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiaryVault Memory Layer — An Open-Source Memory Layer for Humans</title>
-    <meta name="description" content="Cryptographically verified, encrypted, permanent memory records. Your journal. Your keys. Forever.">
-    <meta property="og:title" content="DiaryVault Memory Layer — Own Your Life Story Forever">
-    <meta property="og:description" content="An open-source memory layer for humans. Cryptographically verified, encrypted, permanent memory records.">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>
+        DiaryVault Memory Layer | User Controlled Memory for AI
+    </title>
+    <meta
+        name="description"
+        content="An open source Python SDK for tamper evident memory records, selective context sharing, and AI ready exports."
+    >
+    <meta
+        property="og:title"
+        content="DiaryVault Memory Layer | User Controlled Memory for AI"
+    >
+    <meta
+        property="og:description"
+        content="Portable memory records with local encryption, selective sharing, and AI ready exports."
+    >
     <meta property="og:type" content="website">
     <link rel="icon" href="favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link
+        rel="icon"
+        type="image/png"
+        sizes="32x32"
+        href="favicon-32x32.png"
+    >
+    <link
+        rel="icon"
+        type="image/png"
+        sizes="16x16"
+        href="favicon-16x16.png"
+    >
+    <link
+        rel="apple-touch-icon"
+        href="apple-touch-icon.png"
+    >
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
+        rel="stylesheet"
+    >
     <style>
         :root {
             --navy-deep: #1a2d42;
             --navy: #2d4a6f;
             --navy-light: #3d6090;
-            --navy-mist: #e8eef4;
             --navy-fog: #f2f5f9;
             --gold: #d4a854;
             --gold-light: #e8cc8a;
-            --gold-cream: #f5ead0;
             --gold-pale: #faf5ea;
             --cream: #fdfbf7;
             --white: #ffffff;
             --text: #1a2d42;
             --text-soft: #4a6280;
-            --text-muted: #8a9bb0;
+            --text-muted: #8292a5;
             --border: #dce4ec;
             --border-light: #edf1f5;
-            --display: 'Instrument Serif', Georgia, serif;
-            --body: 'DM Sans', -apple-system, sans-serif;
-            --mono: 'DM Mono', monospace;
+            --display: "Instrument Serif", Georgia, serif;
+            --body: "DM Sans", -apple-system, sans-serif;
+            --mono: "DM Mono", monospace;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             background: var(--cream);
             color: var(--text);
             font-family: var(--body);
             line-height: 1.7;
-            overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ── NAV ── */
         nav {
-            position: fixed; top: 0; width: 100%; z-index: 100;
-            padding: 1.2rem 3rem;
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(253,251,247,0.9);
-            backdrop-filter: blur(20px);
+            align-items: center;
+            backdrop-filter: blur(18px);
+            background: rgba(253, 251, 247, 0.92);
             border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 3rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
-        .nav-brand {
-            display: flex; align-items: center; gap: 0.7rem;
+
+        .brand {
+            color: var(--navy-deep);
+            font-size: 0.95rem;
+            font-weight: 600;
             text-decoration: none;
         }
-        .nav-logo {
-            width: 32px; height: 32px; border-radius: 8px;
-            object-fit: contain;
+
+        .nav-links {
+            align-items: center;
+            display: flex;
+            gap: 1.5rem;
         }
-        .nav-name {
-            font-family: var(--body); font-weight: 600;
-            font-size: 0.95rem; color: var(--navy-deep);
-            letter-spacing: -0.01em;
-        }
-        .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+
         .nav-links a {
-            font-family: var(--body); font-size: 0.85rem; font-weight: 500;
-            color: var(--text-soft); text-decoration: none; transition: color 0.3s;
+            color: var(--text-soft);
+            font-size: 0.84rem;
+            font-weight: 500;
+            text-decoration: none;
         }
-        .nav-links a:hover { color: var(--navy); }
+
+        .nav-links a:hover {
+            color: var(--navy);
+        }
+
         .nav-links .nav-cta {
-            background: var(--navy); color: white;
-            padding: 0.55rem 1.3rem; border-radius: 8px;
-            font-size: 0.82rem; transition: all 0.3s;
+            background: var(--navy);
+            border-radius: 9px;
+            color: var(--white);
+            padding: 0.55rem 1rem;
         }
-        .nav-links .nav-cta:hover { background: var(--navy-light); color: white; }
 
-        /* ── HERO ── */
         .hero {
-            min-height: 100vh;
-            display: flex; flex-direction: column; justify-content: center;
-            padding: 8rem 3rem 6rem;
-            max-width: 860px; margin: 0 auto;
-            text-align: center; align-items: center;
+            align-items: center;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+            max-width: 900px;
+            min-height: 78vh;
+            padding: 8rem 2rem 6rem;
+            text-align: center;
         }
-        .hero-badge {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            background: var(--gold-pale); border: 1px solid var(--gold-cream);
-            padding: 0.4rem 1rem; border-radius: 100px;
-            font-size: 0.78rem; font-weight: 500; color: var(--navy);
-            margin-bottom: 2.5rem;
-            opacity: 0; animation: fadeUp 0.7s ease forwards 0.1s;
+
+        .badge {
+            align-items: center;
+            background: var(--gold-pale);
+            border: 1px solid var(--gold-light);
+            border-radius: 999px;
+            color: var(--navy);
+            display: inline-flex;
+            font-size: 0.76rem;
+            font-weight: 600;
+            gap: 0.45rem;
+            margin-bottom: 2rem;
+            padding: 0.38rem 0.9rem;
         }
-        .hero-badge-dot {
-            width: 6px; height: 6px; border-radius: 50%;
+
+        .badge-dot {
             background: var(--gold);
-        }
-        .hero h1 {
-            font-family: var(--display); font-size: clamp(2.8rem, 6vw, 4.5rem);
-            font-weight: 400; line-height: 1.12;
-            color: var(--navy-deep); margin-bottom: 1.5rem;
-            opacity: 0; animation: fadeUp 0.7s ease forwards 0.25s;
-        }
-        .hero h1 em {
-            font-style: italic; color: var(--navy-light);
-        }
-        .hero-sub {
-            font-size: 1.15rem; line-height: 1.7;
-            color: var(--text-soft); max-width: 540px;
-            margin-bottom: 2.5rem;
-            opacity: 0; animation: fadeUp 0.7s ease forwards 0.4s;
-        }
-        .hero-actions {
-            display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center;
-            opacity: 0; animation: fadeUp 0.7s ease forwards 0.55s;
-        }
-        .btn-primary {
-            font-family: var(--body); font-size: 0.9rem; font-weight: 500;
-            padding: 0.85rem 2rem; border-radius: 10px;
-            background: var(--navy); color: white;
-            border: none; cursor: pointer; text-decoration: none;
-            transition: all 0.3s; display: inline-flex; align-items: center; gap: 0.5rem;
-        }
-        .btn-primary:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(45,74,111,0.2); }
-        .btn-secondary {
-            font-family: var(--body); font-size: 0.9rem; font-weight: 500;
-            padding: 0.85rem 2rem; border-radius: 10px;
-            background: var(--white); color: var(--navy);
-            border: 1px solid var(--border); cursor: pointer; text-decoration: none;
-            transition: all 0.3s;
-        }
-        .btn-secondary:hover { border-color: var(--navy); transform: translateY(-1px); }
-        .hero-install {
-            margin-top: 3rem; width: 100%; max-width: 400px;
-            opacity: 0; animation: fadeUp 0.7s ease forwards 0.7s;
-        }
-        .install-box {
-            background: var(--navy-deep); color: var(--gold-light);
-            font-family: var(--mono); font-size: 0.85rem;
-            padding: 0.9rem 1.5rem; border-radius: 10px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .install-box span { opacity: 0.5; margin-right: 0.5rem; }
-        .install-copy {
-            background: none; border: none; color: var(--text-muted);
-            cursor: pointer; font-size: 0.75rem; font-family: var(--body);
-            padding: 0.3rem 0.6rem; border-radius: 4px; transition: all 0.2s;
-        }
-        .install-copy:hover { color: var(--gold-light); background: rgba(255,255,255,0.1); }
-
-        /* ── SECTIONS ── */
-        section { padding: 6rem 3rem; max-width: 960px; margin: 0 auto; }
-        .section-label {
-            font-family: var(--mono); font-size: 0.72rem; font-weight: 500;
-            color: var(--gold); letter-spacing: 0.12em;
-            text-transform: uppercase; margin-bottom: 1rem;
-        }
-        .section-title {
-            font-family: var(--display); font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-            font-weight: 400; line-height: 1.2; color: var(--navy-deep);
-            margin-bottom: 1.2rem;
-        }
-        .section-body { color: var(--text-soft); font-size: 1.05rem; max-width: 600px; }
-
-        /* ── DIVIDER ── */
-        .divider {
-            max-width: 960px; margin: 0 auto; padding: 0 3rem;
-        }
-        .divider-line {
-            height: 1px; background: var(--border-light);
+            border-radius: 50%;
+            height: 6px;
+            width: 6px;
         }
 
-        /* ── PROBLEM CARDS ── */
-        .problem-grid {
-            margin-top: 3rem;
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
-        }
-        .problem-card {
-            background: var(--white); border: 1px solid var(--border-light);
-            border-radius: 14px; padding: 2rem 1.8rem;
-            transition: all 0.3s;
-        }
-        .problem-card:hover {
-            border-color: var(--border);
-            box-shadow: 0 4px 24px rgba(26,45,66,0.06);
-            transform: translateY(-2px);
-        }
-        .problem-icon {
-            width: 44px; height: 44px; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.3rem; margin-bottom: 1.2rem;
-            background: var(--navy-fog);
-        }
-        .problem-card h3 {
-            font-family: var(--body); font-size: 0.95rem; font-weight: 600;
-            margin-bottom: 0.5rem; color: var(--navy-deep);
-        }
-        .problem-card p { font-size: 0.88rem; color: var(--text-soft); line-height: 1.6; }
-
-        /* ── CODE BLOCK ── */
-        .code-wrapper {
-            background: var(--white); border-top: 1px solid var(--border-light);
-            border-bottom: 1px solid var(--border-light);
-        }
-        .code-block {
-            margin-top: 2rem; background: var(--navy-deep);
-            border-radius: 14px; padding: 2rem 2.2rem;
-            overflow-x: auto; position: relative;
-        }
-        .code-tab {
-            position: absolute; top: 0; left: 2rem;
-            background: var(--navy); color: var(--gold-light);
-            font-family: var(--mono); font-size: 0.65rem;
-            padding: 0.3rem 0.8rem; border-radius: 0 0 6px 6px;
-            letter-spacing: 0.06em; text-transform: uppercase;
-        }
-        .code-block pre {
-            font-family: var(--mono); font-size: 0.82rem;
-            line-height: 1.85; color: #b8c9db; margin-top: 0.8rem;
-        }
-        .code-block .kw { color: var(--gold-light); }
-        .code-block .str { color: #8bbf7c; }
-        .code-block .cm { color: #5a7089; }
-        .code-block .fn { color: #7eb8da; }
-
-        /* ── ARCHITECTURE ── */
-        .arch-flow { margin-top: 3rem; display: flex; flex-direction: column; gap: 0.6rem; }
-        .arch-layer {
-            background: var(--white); border: 1px solid var(--border-light);
-            border-radius: 12px; padding: 1.6rem 2rem;
-            display: flex; align-items: flex-start; gap: 1.3rem;
-            transition: all 0.3s;
-        }
-        .arch-layer:hover {
-            border-color: var(--gold-cream);
-            box-shadow: 0 2px 16px rgba(26,45,66,0.05);
-        }
-        .arch-num {
-            font-family: var(--display); font-size: 1.8rem;
-            color: var(--gold); line-height: 1; min-width: 30px;
-            font-style: italic;
-        }
-        .arch-content h3 {
-            font-family: var(--body); font-size: 1rem; font-weight: 600;
-            color: var(--navy-deep); margin-bottom: 0.3rem;
-        }
-        .arch-content p { font-size: 0.88rem; color: var(--text-soft); line-height: 1.55; }
-        .arch-connector {
-            display: flex; justify-content: center; padding: 0;
-        }
-        .arch-connector svg { opacity: 0.25; }
-
-        /* ── FEATURES ── */
-        .features-grid {
-            margin-top: 3rem;
-            display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
-        }
-        .feature {
-            background: var(--white); border: 1px solid var(--border-light);
-            border-radius: 14px; padding: 2rem 1.8rem;
-            transition: all 0.3s;
-        }
-        .feature:hover {
-            border-color: var(--border);
-            box-shadow: 0 4px 24px rgba(26,45,66,0.06);
-        }
-        .feature-label {
-            font-family: var(--mono); font-size: 0.65rem; font-weight: 500;
-            color: var(--gold); letter-spacing: 0.1em;
-            text-transform: uppercase; margin-bottom: 0.8rem;
-        }
-        .feature h3 {
-            font-family: var(--body); font-size: 1rem; font-weight: 600;
-            color: var(--navy-deep); margin-bottom: 0.5rem;
-        }
-        .feature p { font-size: 0.88rem; color: var(--text-soft); line-height: 1.6; }
-
-        /* ── USE CASES ── */
-        .use-cases { margin-top: 2.5rem; }
-        .use-case {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 1.1rem 0;
-            border-bottom: 1px solid var(--border-light);
-        }
-        .use-case:first-child { border-top: 1px solid var(--border-light); }
-        .use-case-name {
-            font-family: var(--body); font-size: 1rem; font-weight: 600;
+        h1,
+        h2 {
             color: var(--navy-deep);
-        }
-        .use-case-desc {
-            font-size: 0.85rem; color: var(--text-muted);
+            font-family: var(--display);
+            font-weight: 400;
         }
 
-        /* ── OPEN CORE ── */
-        .oss-split {
-            margin-top: 2.5rem;
-            display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+        h1 {
+            font-size: clamp(3rem, 7vw, 5.2rem);
+            line-height: 1.04;
+            max-width: 850px;
         }
-        .oss-col {
-            background: var(--white); border: 1px solid var(--border-light);
-            border-radius: 14px; padding: 2rem 1.8rem;
-        }
-        .oss-col h3 {
-            font-family: var(--body); font-size: 0.82rem; font-weight: 600;
-            letter-spacing: 0.04em; text-transform: uppercase;
-            margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem;
-        }
-        .oss-col.open { border-color: var(--navy-mist); }
-        .oss-col.open h3 { color: var(--navy); }
-        .oss-col.pro { border-color: var(--gold-cream); }
-        .oss-col.pro h3 { color: var(--gold); }
-        .oss-dot-navy { width: 8px; height: 8px; border-radius: 50%; background: var(--navy); }
-        .oss-dot-gold { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
-        .oss-item {
-            font-size: 0.88rem; color: var(--text-soft);
-            padding: 0.45rem 0;
-            border-bottom: 1px solid var(--border-light);
-        }
-        .oss-item:last-child { border-bottom: none; }
 
-        /* ── CTA ── */
-        .cta-section {
+        h1 em {
+            color: var(--navy-light);
+            font-weight: 400;
+        }
+
+        .hero-copy {
+            color: var(--text-soft);
+            font-size: 1.12rem;
+            margin: 1.5rem auto 2rem;
+            max-width: 650px;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            justify-content: center;
+        }
+
+        .button {
+            border-radius: 10px;
+            display: inline-flex;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.8rem 1.45rem;
+            text-decoration: none;
+        }
+
+        .button-primary {
+            background: var(--navy);
+            color: var(--white);
+        }
+
+        .button-secondary {
+            background: var(--white);
+            border: 1px solid var(--border);
+            color: var(--navy);
+        }
+
+        .install {
+            align-items: center;
             background: var(--navy-deep);
+            border-radius: 10px;
+            color: var(--gold-light);
+            display: flex;
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            justify-content: space-between;
             margin-top: 2rem;
+            max-width: 420px;
+            padding: 0.85rem 1rem;
+            width: 100%;
         }
-        .cta-section section {
-            text-align: center;
-            display: flex; flex-direction: column; align-items: center;
-            padding: 6rem 3rem;
-        }
-        .cta-section .section-label { color: var(--gold); }
-        .cta-section .section-title { color: var(--white); }
-        .cta-section .section-body { color: #8a9bb0; margin-bottom: 2.5rem; text-align: center; }
-        .cta-actions { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
-        .btn-gold {
-            font-family: var(--body); font-size: 0.9rem; font-weight: 500;
-            padding: 0.85rem 2rem; border-radius: 10px;
-            background: var(--gold); color: var(--navy-deep);
-            border: none; cursor: pointer; text-decoration: none;
-            transition: all 0.3s;
-        }
-        .btn-gold:hover { background: var(--gold-light); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(212,168,84,0.3); }
-        .btn-outline-light {
-            font-family: var(--body); font-size: 0.9rem; font-weight: 500;
-            padding: 0.85rem 2rem; border-radius: 10px;
-            background: transparent; color: #8a9bb0;
-            border: 1px solid #3a5068; cursor: pointer; text-decoration: none;
-            transition: all 0.3s;
-        }
-        .btn-outline-light:hover { color: white; border-color: #5a7a98; }
 
-        /* ── FOOTER ── */
-        footer {
+        .install span {
+            color: var(--text-muted);
+        }
+
+        .install button {
+            background: transparent;
+            border: 0;
+            color: var(--gold-light);
+            cursor: pointer;
+            font-family: var(--body);
+            font-size: 0.75rem;
+        }
+
+        main {
+            overflow: hidden;
+        }
+
+        section {
+            margin: 0 auto;
+            max-width: 1000px;
+            padding: 6rem 2rem;
+        }
+
+        .section-label {
+            color: var(--gold);
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.13em;
+            margin-bottom: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            line-height: 1.15;
+            margin-bottom: 1rem;
+        }
+
+        .section-copy {
+            color: var(--text-soft);
+            font-size: 1.02rem;
+            max-width: 680px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(3, 1fr);
+            margin-top: 2.5rem;
+        }
+
+        .card {
+            background: var(--white);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 1.7rem;
+        }
+
+        .card h3 {
+            color: var(--navy-deep);
+            font-size: 0.98rem;
+            margin-bottom: 0.55rem;
+        }
+
+        .card p {
+            color: var(--text-soft);
+            font-size: 0.88rem;
+        }
+
+        .principle {
             background: var(--navy-deep);
-            border-top: 1px solid #2a3f55;
-            padding: 3rem 3rem;
+            border-radius: 18px;
+            color: var(--white);
+            margin-top: 2.5rem;
+            padding: 2.5rem;
+        }
+
+        .principle blockquote {
+            color: var(--gold-light);
+            font-family: var(--display);
+            font-size: clamp(2rem, 4vw, 3rem);
+            line-height: 1.2;
+        }
+
+        .principle p {
+            color: #b8c9db;
+            margin-top: 1rem;
+            max-width: 700px;
+        }
+
+        .code {
+            background: var(--navy-deep);
+            border-radius: 14px;
+            color: #c7d5e3;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            line-height: 1.8;
+            margin-top: 2.5rem;
+            overflow-x: auto;
+            padding: 2rem;
+            white-space: pre;
+        }
+
+        .flow {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 2.5rem;
+        }
+
+        .flow-item {
+            align-items: flex-start;
+            background: var(--white);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            display: flex;
+            gap: 1rem;
+            padding: 1.3rem 1.5rem;
+        }
+
+        .flow-number {
+            color: var(--gold);
+            font-family: var(--display);
+            font-size: 1.7rem;
+            line-height: 1;
+        }
+
+        .flow-item h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .flow-item p {
+            color: var(--text-soft);
+            font-size: 0.86rem;
+        }
+
+        .status-list {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: 1fr 1fr;
+            margin-top: 2.5rem;
+        }
+
+        .status-panel {
+            background: var(--white);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 1.7rem;
+        }
+
+        .status-panel h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-panel ul {
+            color: var(--text-soft);
+            list-style: none;
+        }
+
+        .status-panel li {
+            border-top: 1px solid var(--border-light);
+            font-size: 0.86rem;
+            padding: 0.55rem 0;
+        }
+
+        .status-panel li:first-child {
+            border-top: 0;
+        }
+
+        .roadmap {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(3, 1fr);
+            margin-top: 2.5rem;
+        }
+
+        .roadmap .card strong {
+            color: var(--gold);
+            display: block;
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            margin-bottom: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        footer {
+            border-top: 1px solid var(--border-light);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-top: 3rem;
+            padding: 2.5rem 2rem;
             text-align: center;
         }
-        .footer-brand {
-            font-family: var(--body); font-size: 0.8rem; font-weight: 500;
-            color: #5a7a98; margin-bottom: 1rem;
-        }
-        .footer-links {
-            display: flex; gap: 2rem; justify-content: center;
-            list-style: none; margin-bottom: 1.2rem;
-        }
-        .footer-links a {
-            font-family: var(--body); font-size: 0.8rem;
-            color: #5a7a98; text-decoration: none; transition: color 0.3s;
-        }
-        .footer-links a:hover { color: var(--gold-light); }
-        .footer-quote {
-            font-family: var(--display); font-style: italic;
-            font-size: 0.95rem; color: #3a5068; margin-top: 1.5rem;
+
+        footer a {
+            color: var(--navy);
         }
 
-        /* ── ANIMATIONS ── */
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(16px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .reveal {
-            opacity: 0; transform: translateY(24px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
-        }
-        .reveal.visible { opacity: 1; transform: translateY(0); }
+        @media (max-width: 760px) {
+            nav {
+                padding: 1rem 1.2rem;
+            }
 
-        /* ── RESPONSIVE ── */
-        @media (max-width: 700px) {
-            nav { padding: 1rem 1.5rem; }
-            .nav-links { gap: 1rem; }
-            .nav-links a:not(.nav-cta) { display: none; }
-            .hero, section { padding-left: 1.5rem; padding-right: 1.5rem; }
-            .problem-grid { grid-template-columns: 1fr; }
-            .features-grid { grid-template-columns: 1fr; }
-            .oss-split { grid-template-columns: 1fr; }
-            .use-case { flex-direction: column; gap: 0.2rem; align-items: flex-start; }
+            .nav-links a:not(.nav-cta) {
+                display: none;
+            }
+
+            .hero {
+                min-height: auto;
+                padding: 6rem 1.2rem 4rem;
+            }
+
+            section {
+                padding: 4.5rem 1.2rem;
+            }
+
+            .grid,
+            .roadmap,
+            .status-list {
+                grid-template-columns: 1fr;
+            }
+
+            .code {
+                font-size: 0.72rem;
+                padding: 1.4rem;
+            }
         }
     </style>
 </head>
 <body>
-
-<!-- NAV -->
-<nav>
-    <a href="https://diaryvault.com" class="nav-brand">
-        <img src="logo.png" alt="DiaryVault" class="nav-logo">
-        <span class="nav-name">DiaryVault</span>
-    </a>
-    <ul class="nav-links">
-        <li><a href="#problem">Why</a></li>
-        <li><a href="#how">How It Works</a></li>
-        <li><a href="#features">Features</a></li>
-        <li><a href="https://github.com/DiaryVault/diaryvault-memory-layer">GitHub</a></li>
-        <li><a href="https://diaryvault.com" class="nav-cta">Try the App</a></li>
-    </ul>
-</nav>
-
-<!-- HERO -->
-<header class="hero">
-    <div class="hero-badge">
-        <div class="hero-badge-dot"></div>
-        Open Source · MIT License · Privacy First
-    </div>
-    <h1>An open-source<br><em>memory layer</em><br>for humans</h1>
-    <p class="hero-sub">
-        Your journal entries, cryptographically verified, encrypted, and permanently preserved.
-        Because your life story should belong to you — forever.
-    </p>
-    <div class="hero-actions">
-        <a href="https://github.com/DiaryVault/diaryvault-memory-layer" class="btn-primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-            View on GitHub
-        </a>
-        <a href="#how" class="btn-secondary">See How It Works</a>
-    </div>
-    <div class="hero-install">
-        <div class="install-box">
-            <div><span>$</span> pip install diaryvault-memory</div>
-            <button class="install-copy" onclick="navigator.clipboard.writeText('pip install diaryvault-memory');this.textContent='Copied!'">Copy</button>
+    <nav>
+        <a class="brand" href="#">DiaryVault Memory Layer</a>
+        <div class="nav-links">
+            <a href="#capabilities">Capabilities</a>
+            <a href="#trust">Trust model</a>
+            <a href="#roadmap">Roadmap</a>
+            <a
+                class="nav-cta"
+                href="https://github.com/DiaryVault/diaryvault-memory-layer"
+            >
+                GitHub
+            </a>
         </div>
-    </div>
-</header>
+    </nav>
 
-<div class="divider"><div class="divider-line"></div></div>
+    <main>
+        <header class="hero">
+            <div class="badge">
+                <span class="badge-dot"></span>
+                Open source Python SDK · v0.3.0 Alpha
+            </div>
 
-<!-- PROBLEM -->
-<section id="problem">
-    <div class="reveal">
-        <p class="section-label">The Problem</p>
-        <h2 class="section-title">Humans have no black box.</h2>
-        <p class="section-body">
-            Planes have flight recorders. Cars have dash cams. Companies have audit logs.
-            But the most complex system on Earth — a human life — has no verifiable,
-            tamper-proof record.
-        </p>
-    </div>
-    <div class="problem-grid reveal">
-        <div class="problem-card">
-            <div class="problem-icon">🧠</div>
-            <h3>Memory fades</h3>
-            <p>You forget 70% of new information within 24 hours. Your most important decisions fade into fragments.</p>
-        </div>
-        <div class="problem-card">
-            <div class="problem-icon">🔓</div>
-            <h3>Data is scattered</h3>
-            <p>Your life is stored across dozens of apps and platforms — none of which you truly own or control.</p>
-        </div>
-        <div class="problem-card">
-            <div class="problem-icon">🤖</div>
-            <h3>Reality is forgeable</h3>
-            <p>AI can generate fake photos, voices, text, and video. Proving what's real gets harder every day.</p>
-        </div>
-    </div>
-</section>
+            <h1>
+                Personal memory for AI,
+                <em>controlled by the person.</em>
+            </h1>
 
-<div class="divider"><div class="divider-line"></div></div>
-
-<!-- CODE -->
-<div class="code-wrapper" id="how">
-    <section>
-        <div class="reveal">
-            <p class="section-label">Quick Start</p>
-            <h2 class="section-title">Five lines to permanent memory.</h2>
-            <p class="section-body">
-                Install the SDK, create a vault, write a memory. It's hashed, encrypted, signed,
-                and optionally anchored — all in one call.
+            <p class="hero-copy">
+                Create portable, tamper evident memory records.
+                Share only selected context. Export memories into open
+                formats for retrieval and personal AI systems.
             </p>
-        </div>
-        <div class="code-block reveal">
-            <div class="code-tab">Python</div>
-<pre><span class="kw">from</span> diaryvault_memory <span class="kw">import</span> MemoryVault
 
-<span class="cm"># Initialize your vault</span>
-vault = MemoryVault(<span class="fn">encryption_key</span>=<span class="str">"your-secret-key"</span>)
+            <div class="actions">
+                <a
+                    class="button button-primary"
+                    href="https://github.com/DiaryVault/diaryvault-memory-layer"
+                >
+                    View on GitHub
+                </a>
+                <a
+                    class="button button-secondary"
+                    href="https://pypi.org/project/diaryvault-memory/"
+                >
+                    View on PyPI
+                </a>
+            </div>
 
-<span class="cm"># Create an immutable memory</span>
-memory = vault.<span class="fn">create</span>(
-    <span class="fn">content</span>=<span class="str">"Today I decided to quit my job and start a company. "</span>
-            <span class="str">"I've never been more terrified or more alive."</span>,
-    <span class="fn">tags</span>=[<span class="str">"career"</span>, <span class="str">"milestone"</span>]
+            <div class="install">
+                <div><span>$</span> pip install diaryvault-memory</div>
+                <button
+                    type="button"
+                    onclick="navigator.clipboard.writeText('pip install diaryvault-memory'); this.textContent='Copied'"
+                >
+                    Copy
+                </button>
+            </div>
+        </header>
+
+        <section>
+            <div class="section-label">The principle</div>
+            <h2>AI may suggest. People confirm.</h2>
+            <p class="section-copy">
+                Models can summarize, infer, and propose meaning.
+                Those suggestions should not silently become part of a
+                person's permanent record.
+            </p>
+
+            <div class="principle">
+                <blockquote>
+                    Memory should remain reviewable, attributable,
+                    portable, and owned by the person it describes.
+                </blockquote>
+                <p>
+                    The current SDK provides the storage, integrity,
+                    selective sharing, and export primitives. Explicit
+                    drafts and approval records are planned for v0.4.
+                </p>
+            </div>
+        </section>
+
+        <section id="capabilities">
+            <div class="section-label">Available now</div>
+            <h2>A small, inspectable memory toolkit.</h2>
+            <p class="section-copy">
+                The package works locally and has no required
+                DiaryVault service or model provider.
+            </p>
+
+            <div class="grid">
+                <article class="card">
+                    <h3>Local encrypted storage</h3>
+                    <p>
+                        AES 256 GCM encryption with caller controlled
+                        secrets and local persistence.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <h3>Tamper detection</h3>
+                    <p>
+                        SHA 256 hashes and HMAC signatures reveal
+                        changes to stored memory content.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <h3>Selective sharing</h3>
+                    <p>
+                        Apply allowed and denied tags before records
+                        are disclosed to an agent or application.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <h3>RAG ready chunks</h3>
+                    <p>
+                        Transform selected memories into structured
+                        chunks for embedding and retrieval systems.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <h3>Portable exports</h3>
+                    <p>
+                        Produce JSONL, conversation history, knowledge
+                        graphs, and individual .dvmem records.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <h3>Local proof records</h3>
+                    <p>
+                        Record hashes in a local proof store and verify
+                        them later without a network dependency.
+                    </p>
+                </article>
+            </div>
+
+            <div class="code">from diaryvault_memory import MemoryVault
+
+vault = MemoryVault(
+    encryption_key="replace-with-a-private-secret",
+    storage_dir="./memory-data",
 )
 
-<span class="cm"># ✓ SHA-256 hashed</span>
-<span class="cm"># ✓ AES-256 encrypted</span>
-<span class="cm"># ✓ Timestamped & signed</span>
+memory = vault.create(
+    content="She laughed when the dog sneezed.",
+    tags=["family", "milestone"],
+)
 
-<span class="kw">print</span>(memory.hash)       <span class="cm"># a7f3b2c1d4e5...</span>
-<span class="kw">print</span>(memory.verified)   <span class="cm"># True</span>
+assert vault.verify(memory)</div>
+        </section>
 
-<span class="cm"># Anchor to permanent storage</span>
-vault.<span class="fn">anchor</span>(memory, <span class="fn">backend</span>=<span class="str">"arweave"</span>)</pre>
-        </div>
-    </section>
-</div>
-
-<!-- ARCHITECTURE -->
-<section id="architecture">
-    <div class="reveal">
-        <p class="section-label">Architecture</p>
-        <h2 class="section-title">Four layers. One truth.</h2>
-        <p class="section-body">
-            Every memory flows through capture, synthesis, verification, and permanence —
-            each layer adding a guarantee that your record is real, private, and enduring.
-        </p>
-    </div>
-    <div class="arch-flow reveal">
-        <div class="arch-layer">
-            <div class="arch-num">1</div>
-            <div class="arch-content">
-                <h3>Capture Layer</h3>
-                <p>Manual entries, AI agents, API integrations, photo and voice capture. Everything starts here.</p>
-            </div>
-        </div>
-        <div class="arch-connector">
-            <svg width="24" height="20" viewBox="0 0 24 20"><path d="M12 0 L12 20 M6 14 L12 20 L18 14" stroke="#2d4a6f" stroke-width="2" fill="none"/></svg>
-        </div>
-        <div class="arch-layer">
-            <div class="arch-num">2</div>
-            <div class="arch-content">
-                <h3>Synthesis Layer</h3>
-                <p>AI narrative generation, pattern detection, emotional analysis. Raw data becomes meaningful story.</p>
-            </div>
-        </div>
-        <div class="arch-connector">
-            <svg width="24" height="20" viewBox="0 0 24 20"><path d="M12 0 L12 20 M6 14 L12 20 L18 14" stroke="#2d4a6f" stroke-width="2" fill="none"/></svg>
-        </div>
-        <div class="arch-layer">
-            <div class="arch-num">3</div>
-            <div class="arch-content">
-                <h3>Verification Layer</h3>
-                <p>SHA-256 hashing, AES-256-GCM encryption, HMAC signing, Merkle trees. Every byte is provable.</p>
-            </div>
-        </div>
-        <div class="arch-connector">
-            <svg width="24" height="20" viewBox="0 0 24 20"><path d="M12 0 L12 20 M6 14 L12 20 L18 14" stroke="#2d4a6f" stroke-width="2" fill="none"/></svg>
-        </div>
-        <div class="arch-layer">
-            <div class="arch-num">4</div>
-            <div class="arch-content">
-                <h3>Permanence Layer</h3>
-                <p>Local encrypted storage, Arweave, Ethereum L2, IPFS. Choose your level of forever.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<div class="divider"><div class="divider-line"></div></div>
-
-<!-- FEATURES -->
-<section id="features">
-    <div class="reveal">
-        <p class="section-label">Features</p>
-        <h2 class="section-title">Built for trust. Designed for humans.</h2>
-    </div>
-    <div class="features-grid reveal">
-        <div class="feature">
-            <p class="feature-label">Encryption</p>
-            <h3>Military-grade privacy</h3>
-            <p>AES-256-GCM encryption happens on your device. Your key never leaves. Not even we can read your memories.</p>
-        </div>
-        <div class="feature">
-            <p class="feature-label">Verification</p>
-            <h3>Cryptographic proof</h3>
-            <p>Every entry is SHA-256 hashed, timestamped, and signed. Prove exactly when you wrote what you wrote.</p>
-        </div>
-        <div class="feature">
-            <p class="feature-label">Permanence</p>
-            <h3>Blockchain anchoring</h3>
-            <p>Optionally anchor hashes to Arweave, Ethereum L2, or IPFS. Tamper-proof permanence, no tokens required.</p>
-        </div>
-        <div class="feature">
-            <p class="feature-label">AI Agents</p>
-            <h3>Smart capture</h3>
-            <p>Pluggable agents that autonomously capture, synthesize, and enrich your daily memories. Bring your own LLM.</p>
-        </div>
-        <div class="feature">
-            <p class="feature-label">Open Format</p>
-            <h3>.dvmem standard</h3>
-            <p>Documented, open memory format. Your data is never locked in. Export everything, anytime, forever.</p>
-        </div>
-        <div class="feature">
-            <p class="feature-label">Legacy</p>
-            <h3>Dead man's switch</h3>
-            <p>Designate trusted parties who inherit access to your vault after a configurable period of inactivity.</p>
-        </div>
-    </div>
-</section>
-
-<div class="divider"><div class="divider-line"></div></div>
-
-<!-- USE CASES -->
-<section>
-    <div class="reveal">
-        <p class="section-label">Use Cases</p>
-        <h2 class="section-title">Not just a journal. Infrastructure.</h2>
-    </div>
-    <div class="use-cases reveal">
-        <div class="use-case">
-            <span class="use-case-name">Digital Legacy</span>
-            <span class="use-case-desc">Preserve your life story for future generations</span>
-        </div>
-        <div class="use-case">
-            <span class="use-case-name">Legal Evidence</span>
-            <span class="use-case-desc">Timestamped, tamper-proof personal records</span>
-        </div>
-        <div class="use-case">
-            <span class="use-case-name">AI Twin Training</span>
-            <span class="use-case-desc">Structured life data for your personal AI</span>
-        </div>
-        <div class="use-case">
-            <span class="use-case-name">Health Timeline</span>
-            <span class="use-case-desc">Verifiable medical history &amp; symptom tracking</span>
-        </div>
-        <div class="use-case">
-            <span class="use-case-name">Estate Planning</span>
-            <span class="use-case-desc">Secure vault with beneficiary access controls</span>
-        </div>
-        <div class="use-case">
-            <span class="use-case-name">Proof of Humanity</span>
-            <span class="use-case-desc">Continuous identity through verified narrative</span>
-        </div>
-    </div>
-</section>
-
-<div class="divider"><div class="divider-line"></div></div>
-
-<!-- OPEN CORE -->
-<section>
-    <div class="reveal">
-        <p class="section-label">Open Core</p>
-        <h2 class="section-title">The protocol is free. The product is premium.</h2>
-        <p class="section-body">
-            The Memory Layer SDK is MIT-licensed. Build on it, fork it, self-host it.
-            DiaryVault is the beautiful app built on top.
-        </p>
-    </div>
-    <div class="oss-split reveal">
-        <div class="oss-col open">
-            <h3><div class="oss-dot-navy"></div> Open Source (MIT)</h3>
-            <div class="oss-item">Core SDK &amp; crypto engine</div>
-            <div class="oss-item">Memory format spec (.dvmem)</div>
-            <div class="oss-item">Hash verification protocol</div>
-            <div class="oss-item">Encryption layer</div>
-            <div class="oss-item">Agent framework</div>
-            <div class="oss-item">All anchor backends</div>
-        </div>
-        <div class="oss-col pro">
-            <h3><div class="oss-dot-gold"></div> DiaryVault App</h3>
-            <div class="oss-item">Polished journaling UX</div>
-            <div class="oss-item">iOS &amp; Android apps</div>
-            <div class="oss-item">AI writing prompts &amp; reflection</div>
-            <div class="oss-item">Managed cloud sync (E2EE)</div>
-            <div class="oss-item">Premium AI synthesis</div>
-            <div class="oss-item">Managed anchoring service</div>
-        </div>
-    </div>
-</section>
-
-<!-- CTA -->
-<div class="cta-section">
-    <section>
-        <div class="reveal">
-            <p class="section-label">Get Started</p>
-            <h2 class="section-title">Own your life story forever.</h2>
-            <p class="section-body">
-                The Memory Layer is free, open source, and ready to use.
-                Start preserving your memories today.
+        <section id="trust">
+            <div class="section-label">Trust model</div>
+            <h2>Clear boundaries, not oversized claims.</h2>
+            <p class="section-copy">
+                The SDK provides encrypted local storage, integrity
+                checks, selective disclosure, and portable exports.
+                It does not independently establish legal authorship,
+                trusted timestamps, or public blockchain existence.
             </p>
-            <div class="cta-actions">
-                <a href="https://github.com/DiaryVault/diaryvault-memory-layer" class="btn-gold">
-                    ★&nbsp; Star on GitHub
-                </a>
-                <a href="https://diaryvault.com" class="btn-outline-light">Try DiaryVault App</a>
+
+            <div class="flow">
+                <div class="flow-item">
+                    <div class="flow-number">1</div>
+                    <div>
+                        <h3>Create</h3>
+                        <p>
+                            Content is hashed, encrypted, signed, and
+                            stored in the configured local directory.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flow-item">
+                    <div class="flow-number">2</div>
+                    <div>
+                        <h3>Verify</h3>
+                        <p>
+                            The current content is compared with its
+                            stored hash and HMAC signature.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flow-item">
+                    <div class="flow-number">3</div>
+                    <div>
+                        <h3>Select</h3>
+                        <p>
+                            The vault owner determines which tagged
+                            memories may be shared.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flow-item">
+                    <div class="flow-number">4</div>
+                    <div>
+                        <h3>Export</h3>
+                        <p>
+                            Selected memories can leave the vault in
+                            open formats. Export is a disclosure action.
+                        </p>
+                    </div>
+                </div>
             </div>
-        </div>
-    </section>
-</div>
 
-<!-- FOOTER -->
-<footer>
-    <p class="footer-brand">DiaryVault Memory Layer</p>
-    <ul class="footer-links">
-        <li><a href="https://github.com/DiaryVault/diaryvault-memory-layer">GitHub</a></li>
-        <li><a href="https://diaryvault.com">DiaryVault App</a></li>
-        <li><a href="https://twitter.com/diaryvault">Twitter</a></li>
-        <li><a href="https://discord.gg/diaryvault">Discord</a></li>
-    </ul>
-    <p class="footer-quote">"The palest ink is better than the best memory."</p>
-</footer>
+            <div class="status-list">
+                <div class="status-panel">
+                    <h3>Implemented</h3>
+                    <ul>
+                        <li>Local encrypted memory vault</li>
+                        <li>Hash and signature verification</li>
+                        <li>LocalAnchor proof store</li>
+                        <li>Selective context responses</li>
+                        <li>JSONL, RAG, conversation, and graph exports</li>
+                        <li>68 automated tests</li>
+                    </ul>
+                </div>
 
-<script>
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) entry.target.classList.add('visible');
-        });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+                <div class="status-panel">
+                    <h3>Not implemented</h3>
+                    <ul>
+                        <li>Arweave or Ethereum anchoring</li>
+                        <li>IPFS storage</li>
+                        <li>AI model calls or synthesis</li>
+                        <li>Cloud synchronization</li>
+                        <li>Mobile SDKs</li>
+                        <li>Production DiaryVault app integration</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
 
-    document.querySelectorAll('a[href^="#"]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const t = document.querySelector(link.getAttribute('href'));
-            if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    });
-</script>
+        <section id="roadmap">
+            <div class="section-label">Roadmap</div>
+            <h2>From stored memories to reviewable memories.</h2>
+
+            <div class="roadmap">
+                <article class="card">
+                    <strong>Completed</strong>
+                    <h3>v0.1 Foundation</h3>
+                    <p>
+                        Local vault, encryption, hashing, signatures,
+                        verification, and .dvmem records.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <strong>Completed</strong>
+                    <h3>v0.2 and v0.3</h3>
+                    <p>
+                        Selective agent context plus JSONL, RAG,
+                        conversation, and knowledge graph exports.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <strong>Next</strong>
+                    <h3>v0.4 Review workflow</h3>
+                    <p>
+                        Drafts, AI suggestions, provenance, explicit
+                        approval, rejection, edits, and revisions.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section>
+            <div class="section-label">Relationship to DiaryVault</div>
+            <h2>Open primitives behind a real product philosophy.</h2>
+            <p class="section-copy">
+                This repository is currently a standalone Python SDK.
+                It is not yet the storage implementation used by the
+                production DiaryVault applications.
+            </p>
+
+            <div
+                class="actions"
+                style="justify-content: flex-start; margin-top: 2rem;"
+            >
+                <a
+                    class="button button-primary"
+                    href="https://diaryvault.com"
+                >
+                    Visit DiaryVault
+                </a>
+                <a
+                    class="button button-secondary"
+                    href="https://github.com/DiaryVault/diaryvault-memory-layer/tree/main/docs"
+                >
+                    Read the architecture
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        MIT licensed ·
+        <a href="https://github.com/DiaryVault/diaryvault-memory-layer">
+            DiaryVault Memory Layer
+        </a>
+    </footer>
 </body>
 </html>

@@ -1,8 +1,8 @@
 """
-DiaryVault Memory Layer — An open-source memory layer for humans.
+DiaryVault Memory Layer.
 
-Cryptographically verified, encrypted, permanent memory records.
-https://github.com/diaryvault/memory-layer
+Portable, tamper-evident memory records with selective context sharing
+and AI-ready exports.
 """
 
 from .vault import MemoryVault

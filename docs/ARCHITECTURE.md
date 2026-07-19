@@ -1,307 +1,296 @@
-# Architecture — DiaryVault Memory Layer
+# DiaryVault Memory Layer Architecture
 
-## Overview
+## Purpose
 
-The Memory Layer is a four-layer system that transforms raw human experiences into cryptographically verified, encrypted, permanent memory records.
+DiaryVault Memory Layer is a standalone Python SDK for creating, storing, verifying, selectively sharing, and exporting personal memory records.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        APPLICATIONS                               │
-│  DiaryVault App · CLI · Third-party integrations · AI Agents      │
-├──────────────────────────────────────────────────────────────────┤
-│                        MEMORY VAULT SDK                           │
-│  Python · TypeScript (planned) · Rust (planned) · Go (planned)    │
-├───────────┬───────────┬────────────────┬────────────────────────┤
-│  CAPTURE  │ SYNTHESIS │  VERIFICATION  │     PERMANENCE          │
-│  LAYER    │ LAYER     │  LAYER         │     LAYER               │
-│           │           │                │                          │
-│  Manual   │ AI Narr.  │  SHA-256       │  Local Encrypted        │
-│  Agents   │ Summary   │  AES-256-GCM   │  Arweave                │
-│  API      │ Patterns  │  HMAC-SHA256   │  Ethereum L2            │
-│  Import   │ Emotion   │  Merkle Trees  │  IPFS                   │
-└───────────┴───────────┴────────────────┴────────────────────────┘
-```
+The current package provides storage and trust primitives. It does not call AI models and it does not decide whether inferred details are true.
 
-## Design Principles
+The principle guiding future development is:
 
-### 1. Privacy First
-All encryption happens client-side. The encryption key never leaves the user's device. Even if someone gains access to the storage backend, they see only ciphertext. We use AES-256-GCM which provides both confidentiality (no one can read it) and authenticity (no one can tamper with it undetected).
+> AI may suggest. People confirm.
 
-### 2. Verify Everything
-Every operation produces a cryptographic proof. When you create a memory, you get a SHA-256 hash (content fingerprint), an HMAC signature (proof of authorship), and a timestamp. These three pieces together form an unforgeable record.
+## Current architecture
 
-### 3. Own Your Data
-The `.dvmem` format is open and documented. You can export your entire vault at any time. No lock-in. No proprietary formats. If DiaryVault disappears tomorrow, your memories survive.
-
-### 4. Permanence is Optional
-Not everyone needs blockchain anchoring. The system works perfectly with local encrypted storage. Blockchain anchoring is an opt-in layer for those who want maximum tamper resistance.
-
----
-
-## Layer Details
-
-### Capture Layer
-
-The capture layer is responsible for getting data into the system.
-
-```
-Sources:
-├── Manual Entry       → User types/speaks a journal entry
-├── AI Agents          → Autonomous agents that capture context
-│   ├── Calendar Agent → Summarizes daily schedule
-│   ├── Photo Agent    → Processes and describes photos
-│   ├── Health Agent   → Aggregates health/fitness data
-│   └── Custom Agents  → User-defined capture agents
-├── API Integration    → Programmatic entry creation
-└── Import             → Bulk import from other formats
+```text
+Application
+    |
+    v
+MemoryVault
+    |
+    +-- Memory model
+    |
+    +-- MemoryCrypto
+    |     +-- SHA 256 hashing
+    |     +-- AES 256 GCM encryption
+    |     +-- HMAC SHA 256 signing
+    |     +-- Merkle roots
+    |
+    +-- Local storage
+    |
+    +-- LocalAnchor
+    |
+    +-- Context sharing
+    |     +-- ContextRequest
+    |     +-- SharedMemory
+    |     +-- ContextResponse
+    |
+    +-- VaultExporter
+          +-- JSONL
+          +-- RAG chunks
+          +-- Conversation history
+          +-- Knowledge graph
 ```
 
-**Agent Architecture (v0.2+)**
+## Memory lifecycle
 
-Agents are pluggable Python classes that implement the `CaptureAgent` interface:
-
-```python
-class CaptureAgent(ABC):
-    @abstractmethod
-    async def capture(self, context: dict) -> list[Memory]:
-        """Capture memories from a data source."""
-        ...
-
-    @abstractmethod
-    def schedule(self) -> str:
-        """Cron expression for capture frequency."""
-        ...
+```text
+Content captured
+    |
+    v
+Content hashed
+    |
+    v
+Content encrypted
+    |
+    v
+Hash signed
+    |
+    v
+Record stored locally
+    |
+    +-- Verify later
+    +-- Share selected context
+    +-- Export selected data
 ```
 
-Agents run on the user's device or server. They never send unencrypted data externally.
+The Python `Memory` object is mutable.
 
-### Synthesis Layer
+The record is tamper evident rather than immutable. If content changes after creation, verification fails because the stored hash no longer matches the current content.
 
-The synthesis layer uses AI to enrich raw captures into meaningful narratives.
+## Memory model
 
-```
-Raw Input → [AI Synthesis] → Enriched Memory
-                │
-                ├── Narrative Generation
-                │   "You had 3 meetings and went to the gym"
-                │   → "A productive Tuesday. Back-to-back strategy
-                │      sessions in the morning, then a solid workout
-                │      to decompress. You mentioned feeling optimistic
-                │      about the product direction."
-                │
-                ├── Pattern Detection
-                │   "You've journaled about career anxiety 4 times
-                │    this month — that's up from 1 last month."
-                │
-                ├── Emotional Analysis
-                │   Sentiment tracking, mood classification
-                │
-                └── Cross-referencing
-                    Links memories that share themes, people, locations
-```
+A `Memory` contains:
 
-The synthesis layer is LLM-agnostic. Bring your own model:
-- OpenAI API
-- Anthropic Claude API
-- Local models (Llama, Mistral via Ollama)
-- Any OpenAI-compatible endpoint
+* A unique identifier
+* Plaintext content in the active Python object
+* Optional encrypted content
+* A SHA 256 hash
+* An HMAC signature
+* An AES GCM nonce
+* A creation timestamp
+* Tags and metadata
+* Anchor records
+* A lifecycle status
 
-### Verification Layer
+The plaintext content remains available on the active object so the SDK can search, share, and export memories.
 
-The cryptographic core of the system.
+Applications handling sensitive data must control process memory, logs, backups, exported files, and access to the storage directory.
 
-**Hashing (SHA-256)**
-```
-content: "Today was a good day"
-    → SHA-256
-    → "a1b2c3d4e5f6..."  (64-char hex string)
+## Cryptographic boundaries
 
-Change one character:
-content: "Today was a Good day"
-    → SHA-256
-    → "9f8e7d6c5b4a..."  (completely different hash)
-```
+### SHA 256
 
-**Encryption (AES-256-GCM)**
-```
-plaintext + key + nonce
-    → AES-256-GCM
-    → ciphertext + authentication tag
+SHA 256 creates a deterministic content fingerprint.
 
-Features:
-- 256-bit key strength (unbreakable with current technology)
-- GCM mode provides authentication (detects tampering)
-- Unique nonce per encryption (prevents pattern analysis)
-```
+It detects modification when the current content is compared with the stored hash.
 
-**Signing (HMAC-SHA256)**
-```
-content_hash + signing_key
-    → HMAC-SHA256
-    → signature (proves who created the hash)
-```
+### AES 256 GCM
 
-**Merkle Trees (Batch Verification)**
-```
-         [Root Hash]           ← Anchor this ONE hash
-          /        \
-    [Hash AB]    [Hash CD]
-     /    \       /    \
-  [H(A)] [H(B)] [H(C)] [H(D)]  ← Individual memory hashes
-    |      |      |      |
-   Mem1   Mem2   Mem3   Mem4
-```
+AES 256 GCM encrypts content using a key derived from the secret supplied by the caller.
 
-One root hash can verify thousands of memories. This makes batch anchoring extremely cost-efficient.
+Encryption happens in the caller's Python process.
 
-### Permanence Layer
+The SDK does not transmit keys or content. An integrating application can still transmit them, so network and infrastructure security remain application responsibilities.
 
-Where verified hashes are anchored for tamper-proof permanence.
+### HMAC SHA 256
 
-| Backend | Cost | Permanence | Speed | Best For |
-|---------|------|------------|-------|----------|
-| Local | Free | Device lifetime | Instant | Development, self-hosting |
-| Arweave | ~$0.005/KB | 200+ years | ~2 min | Long-term archival |
-| Ethereum L2 | ~$0.01/tx | Blockchain lifetime | ~2 sec | Proof-of-existence |
-| IPFS | Free (pinning costs) | While pinned | ~30 sec | Content distribution |
+HMAC signs the content hash using a key derived from the caller supplied secret.
 
-**Important**: Only the hash goes on-chain. Your content stays encrypted on your device or in your chosen storage. The blockchain merely proves that at time T, content with hash H existed.
+This demonstrates possession of the same secret. It is not a public digital signature and does not independently establish legal authorship.
 
----
+### Merkle roots
 
-## Data Format: `.dvmem`
+A Merkle root summarizes a collection of memory hashes.
 
-The DiaryVault Memory Format is an open JSON-based format.
+It can reveal whether a verified collection differs from the collection used to create the root.
 
-```json
-{
-  "dvmem_version": "1.0",
-  "encoding": "utf-8",
-  "payload": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "version": "1.0.0",
-    "content": "...",
-    "content_type": "text/plain",
-    "hash": "a1b2c3d4e5f6...",
-    "encrypted_content": "...",
-    "nonce": "...",
-    "signature": "...",
-    "created_at": "2025-02-07T14:32:01+00:00",
-    "status": "signed",
-    "metadata": {
-      "tags": ["daily", "career"],
-      "location": null,
-      "mood": "optimistic",
-      "source": "manual",
-      "agent_id": null,
-      "ai_enriched": false,
-      "custom": {}
-    },
-    "anchors": []
-  },
-  "verification": {
-    "hash": "a1b2c3d4e5f6...",
-    "signature": "7g8h9i0j...",
-    "anchors": []
-  }
-}
+The current implementation does not publish roots to an independently trusted timestamping system.
+
+## Storage
+
+`MemoryVault` writes memory records to the configured local storage directory.
+
+Local storage provides:
+
+* Offline operation
+* A user selected storage location
+* Encrypted payload persistence
+* No required DiaryVault service
+
+Local storage alone does not provide:
+
+* Cloud backup
+* Multi device synchronization
+* Independent timestamps
+* Operating system access control
+* Key recovery
+* Guaranteed permanence
+
+## Anchoring
+
+`LocalAnchor` is the only supported anchor backend.
+
+It records memory hashes and related metadata in a local JSON proof store.
+
+The package includes placeholder `ArweaveAnchor` and `EthereumAnchor` classes. They raise `NotImplementedError` and must not be presented as supported backends.
+
+## Selective context sharing
+
+The context layer separates an agent request from the final disclosure decision.
+
+```text
+Agent declares requested scope and purpose
+    |
+    v
+Vault owner applies allowed and denied tags
+    |
+    v
+Vault selects matching memories
+    |
+    v
+ContextResponse contains only granted records
 ```
 
----
+A context response includes verification data. The receiving application still needs a secure channel and an appropriate authorization model.
 
-## Security Model
+## Export layer
 
-### Threat Model
+`VaultExporter` supports:
 
-| Threat | Mitigation |
-|--------|------------|
-| Storage breach | AES-256-GCM encryption. Attacker sees only ciphertext. |
-| Content tampering | SHA-256 hash detects any modification. |
-| Hash forgery | HMAC signature proves authorship. |
-| Replay attacks | Unique nonce per encryption + timestamps. |
-| Key compromise | User responsibility. Future: hardware key support. |
-| Quantum computing | SHA-256 remains secure. AES-256 quantum-resistant. Future: post-quantum upgrade path. |
+* OpenAI style JSONL
+* Anthropic style JSONL
+* Generic JSONL
+* RAG chunks
+* Conversation history
+* Knowledge graphs
+* Summary metadata
 
-### What We DON'T Do
-- We don't store your encryption key
-- We don't transmit unencrypted content
-- We don't have a backdoor
-- We don't use proprietary encryption
-- We can't read your memories even if compelled
+Exports are portable and may contain plaintext.
 
----
+Exporting creates a new copy outside the encrypted vault. Applications should treat export as an explicit disclosure action.
 
-## Integration with DiaryVault App
+## Supported trust claims
 
-The Memory Layer is the open-source foundation. The DiaryVault app (diaryvault.com) is the consumer product built on top:
+The SDK can support these claims:
 
+* Stored content can be encrypted locally.
+* Later content modification can be detected.
+* A caller can selectively disclose memories by tag.
+* Shared records can include hashes and verification state.
+* Records can be exported in portable formats.
+
+The SDK cannot currently support these claims:
+
+* A memory is legally admissible evidence.
+* A timestamp was independently witnessed.
+* A record exists on a public blockchain.
+* Cloud data is end to end encrypted.
+* An AI generated field was confirmed by a person.
+* A deleted export has been revoked from every recipient.
+
+## Proposed v0.4 review workflow
+
+```text
+Capture
+    |
+    v
+MemoryDraft
+    |
+    +-- Original user supplied fields
+    |
+    +-- Suggestion records
+    |     +-- Suggested value
+    |     +-- Model or source
+    |     +-- Process version
+    |     +-- Creation timestamp
+    |     +-- Confidence when available
+    |
+    v
+User review
+    |
+    +-- Approve
+    +-- Edit
+    +-- Reject
+    |
+    v
+ConfirmedMemory
+    |
+    +-- Confirmed fields
+    +-- Approval record
+    +-- Revision history
+    +-- Integrity hash
 ```
-┌─────────────────────────────────────┐
-│         DiaryVault App               │  ← Proprietary
-│  Beautiful UI · Mobile apps          │
-│  AI journaling · Social features     │
-├─────────────────────────────────────┤
-│      DiaryVault Memory Layer         │  ← Open Source (MIT)
-│  SDK · Crypto · Anchoring · Format   │
-└─────────────────────────────────────┘
+
+Core rules:
+
+1. Suggested values are never represented as confirmed values.
+2. Confirmation requires an explicit user action.
+3. Edits preserve suggestion provenance.
+4. Exports distinguish source content, suggestions, and confirmed content.
+5. Revisions create new verification material rather than silently rewriting history.
+6. Deletion and revocation are separate from integrity verification.
+
+## Relationship to the DiaryVault product
+
+This SDK is not currently wired into the production DiaryVault mobile applications.
+
+A future integration should begin with a narrow approved memory bridge.
+
+```text
+Approved DiaryVault Memory Card
+    |
+    v
+Portable memory manifest
+    |
+    v
+Memory Layer verification and selective sharing
 ```
 
-The app adds:
-- Polished journaling UX (iOS, Android, Web)
-- AI-powered writing prompts and reflection
-- Cloud sync (encrypted end-to-end)
-- Premium AI synthesis features
-- Managed anchoring service
+Synthetic fixtures should be used for the reference implementation. Production user data should not be required.
 
-The SDK provides:
-- All cryptographic operations
-- Local-first storage
-- Open data format
-- Self-hosting capability
-- API for third-party integrations
+## Version history
 
----
+### v0.1
 
-## Roadmap
+* Memory model
+* Local vault
+* Hashing
+* Encryption
+* HMAC signatures
+* Local anchors
+* `.dvmem` records
 
-### v0.1 (Current) — Foundation
-- Core SDK: hash, encrypt, verify, sign
-- Memory data model and `.dvmem` format
-- Local anchor backend
-- Python package
+### v0.2
 
-### v0.2 — AI Agents
-- Agent framework and interface
-- Calendar capture agent
-- Daily summary synthesis agent
-- LLM integration (OpenAI, Anthropic, local)
+* Context requests
+* Selective sharing
+* Allowed and denied tags
+* Shared memory verification
+* Merkle roots on context responses
 
-### v0.3 — Blockchain Anchoring
-- Arweave backend
-- Ethereum L2 backend (Base)
-- IPFS backend
-- Batch Merkle anchoring
+### v0.3
 
-### v0.4 — Rich Capture
-- Photo agent with AI description
-- Voice note agent with transcription
-- Health data agent (Apple Health, Google Fit)
-- Location timeline agent
+* JSONL exports
+* RAG chunks
+* Conversation history
+* Knowledge graph exports
 
-### v0.5 — Dead Man's Switch
-- Configurable inactivity threshold
-- Designated beneficiary access
-- Multi-signature key splitting
-- Time-locked encryption
+### v0.4 proposed
 
-### v0.6 — Personal AI Export
-- Structured export for AI fine-tuning
-- Conversation-format export
-- Embedding generation for RAG
-- Personal knowledge graph
-
-### v1.0 — DiaryVault Integration
-- Full integration with DiaryVault app
-- Managed anchoring service
-- Cross-device sync with E2E encryption
-- Premium AI features
+* Draft records
+* Suggestion records
+* Confirmations
+* Approval records
+* Revisions
+* Provenance
