@@ -21,6 +21,7 @@ __all__ = [
     "ReviewDecision",
     "ReviewDraft",
     "ReviewState",
+    "Revision",
     "Suggestion",
 ]
 
@@ -72,6 +73,43 @@ class DecisionOutcome(str, Enum):
 
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+
+
+@dataclass(frozen=True)
+class Revision:
+    """A derived, read-only event in a draft's review history.
+
+    Revisions are not stored. They are computed from the suggestions,
+    decisions, and completion metadata a draft already carries, so the
+    history cannot drift from the record it describes.
+    """
+
+    action: str
+    occurred_at: str
+    actor: str | None = None
+    field_name: str | None = None
+    value: Any = None
+    suggestion_id: str | None = None
+
+    def __post_init__(self) -> None:
+        _require_text(self.action, "action")
+        _require_text(self.occurred_at, "occurred_at")
+
+        object.__setattr__(
+            self,
+            "value",
+            _freeze(self.value),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "action": self.action,
+            "occurred_at": self.occurred_at,
+            "actor": self.actor,
+            "field_name": self.field_name,
+            "value": _thaw(self.value),
+            "suggestion_id": self.suggestion_id,
+        }
 
 
 @dataclass(frozen=True)
@@ -403,6 +441,71 @@ class ReviewDraft:
             completed_by=reviewer,
             completed_at=_utc_now(),
         )
+
+    def revision_history(self) -> tuple[Revision, ...]:
+        """Return the derived, chronologically ordered review history.
+
+        The history is computed from the draft's own records: creation,
+        each suggestion, each decision, and the terminal action if any.
+        """
+        suggestions_by_id = {
+            suggestion.suggestion_id: suggestion for suggestion in self.suggestions
+        }
+
+        events = [
+            Revision(
+                action="draft_created",
+                occurred_at=self.created_at,
+            )
+        ]
+
+        for suggestion in self.suggestions:
+            events.append(
+                Revision(
+                    action="suggestion_added",
+                    occurred_at=suggestion.created_at,
+                    actor=suggestion.source,
+                    field_name=suggestion.field_name,
+                    value=suggestion.value,
+                    suggestion_id=suggestion.suggestion_id,
+                )
+            )
+
+        for decision in self.decisions:
+            suggestion = suggestions_by_id[decision.suggestion_id]
+
+            if decision.outcome is DecisionOutcome.ACCEPTED:
+                action = "suggestion_accepted"
+            else:
+                action = "suggestion_rejected"
+
+            events.append(
+                Revision(
+                    action=action,
+                    occurred_at=decision.decided_at,
+                    actor=decision.reviewer,
+                    field_name=suggestion.field_name,
+                    value=decision.accepted_value,
+                    suggestion_id=decision.suggestion_id,
+                )
+            )
+
+        if self.state is not ReviewState.OPEN:
+            if self.state is ReviewState.APPROVED:
+                action = "draft_approved"
+            else:
+                action = "draft_rejected"
+
+            events.append(
+                Revision(
+                    action=action,
+                    occurred_at=self.completed_at,
+                    actor=self.completed_by,
+                )
+            )
+
+        events.sort(key=lambda event: event.occurred_at)
+        return tuple(events)
 
     def resolved_fields(self) -> dict[str, Any]:
         """Return original fields plus explicitly accepted values."""

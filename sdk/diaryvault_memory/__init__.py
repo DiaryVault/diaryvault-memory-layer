@@ -16,6 +16,7 @@ from .review import (
     ReviewDecision,
     ReviewDraft,
     ReviewState,
+    Revision,
     Suggestion,
 )
 
@@ -41,5 +42,6 @@ __all__ = [
     "ReviewDecision",
     "ReviewDraft",
     "ReviewState",
+    "Revision",
     "Suggestion",
 ]
